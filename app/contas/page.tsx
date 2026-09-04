@@ -1,7 +1,7 @@
 'use client';
+/* eslint-disable @next/next/no-html-link-for-pages */
 
 import {FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import Link from 'next/link';
 
 type Money = {amount: number; currency: string};
 type Account = {
@@ -136,12 +136,12 @@ export default function AccountsPage() {
 
   return <div className="app-shell accounts-page">
     <aside className="sidebar">
-      <Link className="brand brand-link" href="/"><span className="brand-mark"><i className="bi bi-graph-up-arrow"/></span><span>finflow</span></Link>
-      <nav><Link className="nav-link" href="/"><i className="bi bi-grid-1x2-fill"/>Visão geral</Link><Link className="nav-link active" href="/contas"><i className="bi bi-wallet2"/>Contas</Link><Link className="nav-link" href="/#transactions"><i className="bi bi-arrow-left-right"/>Transações</Link><Link className="nav-link" href="/#goals"><i className="bi bi-bullseye"/>Metas</Link><Link className="nav-link" href="/#plan"><i className="bi bi-stars"/>Plano</Link></nav>
+      <a className="brand brand-link" href="/"><span className="brand-mark"><i className="bi bi-graph-up-arrow"/></span><span>finflow</span></a>
+      <nav><a className="nav-link" href="/"><i className="bi bi-grid-1x2-fill"/>Visão geral</a><a className="nav-link active" href="/contas"><i className="bi bi-wallet2"/>Contas</a><a className="nav-link" href="/#transactions"><i className="bi bi-arrow-left-right"/>Transações</a><a className="nav-link" href="/#goals"><i className="bi bi-bullseye"/>Metas</a><a className="nav-link" href="/#plan"><i className="bi bi-stars"/>Plano</a></nav>
       <div className="sidebar-bottom"><button className="nav-link btn-reset" onClick={() => setShowConfig(true)}><i className="bi bi-sliders"/>Conexão API</button><div className="secure-note"><i className="bi bi-shield-check"/><span>Seus dados ficam entre você e sua API.</span></div></div>
     </aside>
     <main className="main-content">
-      <header className="topbar"><Link className="mobile-brand" href="/">finflow</Link><div className="connection"><span className={`status-dot ${config.key ? 'online' : ''}`}/>{config.key ? 'API configurada' : 'API desconectada'}</div><button className="icon-btn" aria-label="Configurar conexão" onClick={() => setShowConfig(true)}><i className="bi bi-gear"/></button><div className="avatar">GF</div></header>
+      <header className="topbar"><a className="mobile-brand" href="/">finflow</a><div className="connection"><span className={`status-dot ${config.key ? 'online' : ''}`}/>{config.key ? 'API configurada' : 'API desconectada'}</div><button className="icon-btn" aria-label="Configurar conexão" onClick={() => setShowConfig(true)}><i className="bi bi-gear"/></button><div className="avatar">GF</div></header>
       <div className="content accounts-content">
         <section className="accounts-heading"><div><p className="eyebrow">CONTAS</p><h1>Seu dinheiro, conta por conta.</h1><p className="subtitle">Acompanhe saldos e mantenha cada valor no lugar certo.</p></div><button className="btn-add-account" onClick={() => setShowCreate(true)} disabled={!config.key}><i className="bi bi-plus-lg"/>Adicionar conta</button></section>
         {message && <div className={`accounts-alert ${message.includes('sucesso') ? 'success' : ''}`} role="status"><i className={`bi ${message.includes('sucesso') ? 'bi-check-circle' : 'bi-exclamation-circle'}`}/>{message}<button aria-label="Fechar aviso" onClick={() => setMessage('')}><i className="bi bi-x"/></button></div>}
