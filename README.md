@@ -47,7 +47,7 @@ O frontend chama o backend pelo servidor, então o navegador não depende do COR
 
 ### Vercel
 
-O projeto usa o build nativo do Next.js, detectado automaticamente pela Vercel. Configure `FINFLOW_API_URL` nas variáveis de ambiente do projeto com a URL HTTPS pública do backend e selecione Node.js 22. O valor `http://localhost:8080` serve apenas para desenvolvimento local; na Vercel, `localhost` aponta para a própria função do frontend.
+O projeto usa o build nativo do Next.js. O `vercel.json` fixa o preset `nextjs`, executa `npm ci` na instalação e `npm run build` no build, inclusive quando o painel da Vercel contém comandos antigos. Configure `FINFLOW_API_URL` nas variáveis de ambiente do projeto com a URL HTTPS pública do backend e selecione Node.js 22. O valor `http://localhost:8080` serve apenas para desenvolvimento local; na Vercel, `localhost` aponta para a própria função do frontend.
 
 ## Acesso e sessão
 
