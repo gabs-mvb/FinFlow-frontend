@@ -2,7 +2,7 @@
 
 Interface em português para o [FinFlow Backend](../FinFlow-backend), com contas, extrato, compromissos, dívidas, metas, carteira e planejamento financeiro. Os dados exibidos e as operações vêm da API; não há saldos demonstrativos misturados aos dados do usuário.
 
-O projeto usa React, TypeScript e rotas compatíveis com Next.js App Router, executadas pelo **vinext/Vite**. O navegador acessa um proxy na mesma origem; a URL do backend e a comunicação com `Authorization: Bearer` ficam no servidor do frontend.
+O projeto usa React, TypeScript e Next.js App Router. O navegador acessa um proxy na mesma origem; a URL do backend e a comunicação com `Authorization: Bearer` ficam no servidor do frontend.
 
 ## Rodar localmente
 
@@ -43,7 +43,11 @@ FINFLOW_API_URL=http://localhost:8080
 
 A variável aceita a origem do backend ou uma base terminada em `/api/v1`. Ela é obrigatória em produção; em desenvolvimento, o padrão é `http://localhost:8080`. Reinicie o servidor do frontend após alterar o ambiente. Abra `http://127.0.0.1:3000/login` e entre com e-mail e senha; o cadastro fica em `/cadastro`.
 
-O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend. A URL não é recebida do navegador e não deve usar prefixos públicos como `NEXT_PUBLIC_` ou `VITE_` para credenciais.
+O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend. A URL não é recebida do navegador e não deve usar o prefixo público `NEXT_PUBLIC_`.
+
+### Vercel
+
+O projeto usa o build nativo do Next.js, detectado automaticamente pela Vercel. Configure `FINFLOW_API_URL` nas variáveis de ambiente do projeto com a URL HTTPS pública do backend e selecione Node.js 22. O valor `http://localhost:8080` serve apenas para desenvolvimento local; na Vercel, `localhost` aponta para a própria função do frontend.
 
 ## Acesso e sessão
 
@@ -138,7 +142,7 @@ npm test
 npm run build
 ```
 
-O build é feito pelo vinext, preservando a infraestrutura Vite existente. Para iniciar o resultado local, use `npm run start`. Esses comandos não publicam a aplicação.
+O build é feito pelo Next.js. Para iniciar o resultado local, use `npm run start`. Esses comandos não publicam a aplicação.
 
 Para verificar o backend separadamente:
 
