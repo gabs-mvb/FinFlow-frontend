@@ -38,16 +38,18 @@ npm run dev -- --host 127.0.0.1 --port 3000
 Configure `.env.local`:
 
 ```dotenv
-FINFLOW_API_URL=http://localhost:8080
+FINFLOW_API_URL=https://finflow-backend-rxf3.onrender.com
 ```
 
-A variável aceita a origem do backend ou uma base terminada em `/api/v1`. Ela é obrigatória em produção; em desenvolvimento, o padrão é `http://localhost:8080`. Reinicie o servidor do frontend após alterar o ambiente. Abra `http://127.0.0.1:3000/login` e entre com e-mail e senha; o cadastro fica em `/cadastro`.
+A variável aceita a origem do backend ou uma base terminada em `/api/v1`. O frontend usa `FINFLOW_API_URL`, aceita `NEXT_PUBLIC_API_URL` por compatibilidade e, sem ambas, usa `https://finflow-backend-rxf3.onrender.com`. Reinicie o servidor do frontend após alterar o ambiente. Abra `http://127.0.0.1:3000/login` e entre com e-mail e senha; o cadastro fica em `/cadastro`.
 
-O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend. A URL não é recebida do navegador e não deve usar o prefixo público `NEXT_PUBLIC_`.
+O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend. Prefira `FINFLOW_API_URL`; `NEXT_PUBLIC_API_URL` é aceito apenas por compatibilidade e não é necessário para o proxy.
+
+O proxy tolera até 50 segundos de espera pelo backend. Esse intervalo acomoda a primeira resposta após o serviço do Render ficar inativo; as chamadas seguintes normalmente são mais rápidas.
 
 ### Vercel
 
-O projeto usa o build nativo do Next.js. O `vercel.json` fixa o preset `nextjs`, executa `npm ci` na instalação e `npm run build` no build, inclusive quando o painel da Vercel contém comandos antigos. Configure `FINFLOW_API_URL` nas variáveis de ambiente do projeto com a URL HTTPS pública do backend e selecione Node.js 22. O valor `http://localhost:8080` serve apenas para desenvolvimento local; na Vercel, `localhost` aponta para a própria função do frontend.
+O projeto usa o build nativo do Next.js. O `vercel.json` fixa o preset `nextjs`, executa `npm ci` na instalação e `npm run build` no build, inclusive quando o painel da Vercel contém comandos antigos. O backend padrão é `https://finflow-backend-rxf3.onrender.com`; ainda é possível sobrescrevê-lo com `FINFLOW_API_URL`. Selecione Node.js 22 na Vercel.
 
 ## Acesso e sessão
 

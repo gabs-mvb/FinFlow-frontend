@@ -51,7 +51,7 @@ async function request<T>(
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort();
-  }, options.timeoutMs ?? 20_000);
+  }, options.timeoutMs ?? 55_000);
   const requestHeaders = new Headers(headers);
   requestHeaders.set("Accept", "application/json");
   if (body !== undefined)

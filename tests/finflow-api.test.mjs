@@ -45,6 +45,7 @@ const testSession = { token, user, expiresAt };
 const originalFetch = globalThis.fetch;
 const originalEnv = {
   FINFLOW_API_URL: process.env.FINFLOW_API_URL,
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   FINFLOW_API_KEY: process.env.FINFLOW_API_KEY,
   NODE_ENV: process.env.NODE_ENV,
 };
@@ -490,10 +491,26 @@ test("backend redirects are rejected without forwarding credentials to another d
   assert.equal(calls, 1);
 });
 
-test("production requires a configured backend and failed connections return a useful 502", async () => {
+test("backend URL prefers private configuration, supports public configuration, and defaults to Render", () => {
   delete process.env.FINFLOW_API_URL;
-  process.env.NODE_ENV = "production";
-  assert.equal((await server.fetchUpstream("/accounts", "key")).status, 503);
+  delete process.env.NEXT_PUBLIC_API_URL;
+  assert.equal(
+    String(server.upstreamUrl("/accounts")),
+    "https://finflow-backend-rxf3.onrender.com/api/v1/accounts",
+  );
+  process.env.NEXT_PUBLIC_API_URL = "https://public.example";
+  assert.equal(
+    String(server.upstreamUrl("/login", "", "auth")),
+    "https://public.example/api/auth/login",
+  );
+  process.env.FINFLOW_API_URL = "http://localhost:8080";
+  assert.equal(
+    String(server.upstreamUrl("/accounts")),
+    "http://localhost:8080/api/v1/accounts",
+  );
+});
+
+test("failed backend connections return a useful 502", async () => {
   process.env.FINFLOW_API_URL = "http://localhost:8080";
   globalThis.fetch = async () => {
     throw new TypeError("ECONNREFUSED");

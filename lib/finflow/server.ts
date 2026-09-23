@@ -3,6 +3,8 @@ import type { AuthUser } from "@/lib/auth/types";
 
 const COOKIE_NAME = "finflow_session";
 const SESSION_SECONDS = 24 * 60 * 60;
+const UPSTREAM_TIMEOUT_MS = 50_000;
+const DEFAULT_API_URL = "https://finflow-backend-rxf3.onrender.com";
 
 export interface StoredSession {
   token: string;
@@ -32,10 +34,11 @@ export function upstreamUrl(
   search = "",
   namespace: "finance" | "auth" = "finance",
 ): URL {
-  const configured = process.env.FINFLOW_API_URL;
-  if (!configured && process.env.NODE_ENV === "production")
-    throw new Error("FINFLOW_API_URL is required.");
-  const base = new URL(configured || "http://localhost:8080");
+  const configured =
+    process.env.FINFLOW_API_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    DEFAULT_API_URL;
+  const base = new URL(configured);
   if (
     !["http:", "https:"].includes(base.protocol) ||
     base.username ||
@@ -212,7 +215,7 @@ export async function fetchUpstream(
   const abort = () => controller.abort(init.signal?.reason);
   if (init.signal?.aborted) abort();
   init.signal?.addEventListener("abort", abort, { once: true });
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
     const headers = new Headers(init.headers);
     headers.delete("X-API-Key");
