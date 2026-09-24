@@ -40,13 +40,6 @@ type PositionDraft = {
   assetClass: AssetClass;
   amount: string;
 };
-type TargetDraft = {
-  key: string;
-  assetClass: AssetClass;
-  target: string;
-  minimum: string;
-  maximum: string;
-};
 
 export function PortfolioPage({
   onboarding = false,
@@ -69,21 +62,13 @@ export function PortfolioPage({
       0,
     ) ?? 0;
   const currency = portfolio?.positions[0]?.currentValue.currency ?? "BRL";
-  const currentByClass = new Map<AssetClass, number>();
-  portfolio?.positions.forEach((position) => {
-    currentByClass.set(
-      position.assetClass,
-      (currentByClass.get(position.assetClass) ?? 0) +
-        position.currentValue.amount,
-    );
-  });
 
   return (
     <>
       <PageHeading
         embedded={onboarding}
         title="Sua carteira"
-        description="Acompanhe as posições e defina o destino dos próximos aportes."
+        description="Acompanhe os ativos e o valor atual dos seus investimentos."
         actions={
           portfolio && !editing ? (
             <Button
@@ -102,7 +87,7 @@ export function PortfolioPage({
         <Alert tone="success">
           Carteira salva.{" "}
           {onboarding
-            ? "Suas metas de alocação vão orientar as sugestões de aporte."
+            ? "Seus investimentos serão considerados na análise do plano."
             : "Gere um novo plano para atualizar as sugestões de aporte."}
         </Alert>
       )}
@@ -117,12 +102,11 @@ export function PortfolioPage({
                 setSaved(true);
               }}
             />
-          ) : portfolio.positions.length === 0 &&
-            portfolio.targets.length === 0 ? (
+          ) : portfolio.positions.length === 0 ? (
             <EmptyState
               icon="pie-chart"
-              title="Dê um destino aos seus investimentos"
-              description="Cadastre o valor atual dos seus ativos e suas metas de alocação. O plano usa essas metas para distribuir novos aportes."
+              title="Cadastre seus investimentos"
+              description="Informe os ativos que você já possui e o valor atual de cada um."
               action={
                 <Button onClick={() => setEditing(true)}>
                   Configurar carteira
@@ -142,11 +126,6 @@ export function PortfolioPage({
                   value={portfolio.positions.length}
                   detail="Posições na carteira"
                 />
-                <Stat
-                  label="Classes com meta"
-                  value={portfolio.targets.length}
-                  detail="Usadas na distribuição de aportes"
-                />
               </div>
               <section className="panel">
                 <div className="panel-head">
@@ -156,7 +135,7 @@ export function PortfolioPage({
                 {portfolio.positions.length === 0 ? (
                   <EmptyState
                     title="Nenhuma posição cadastrada"
-                    description="Suas metas já estão definidas. Adicione ativos ao começar a investir."
+                    description="Adicione os ativos que você já possui."
                   />
                 ) : (
                   <div className="table-wrap">
@@ -195,71 +174,7 @@ export function PortfolioPage({
                   </div>
                 )}
               </section>
-              <section className="panel">
-                <div className="panel-head">
-                  <div>
-                    <h2>Metas de alocação</h2>
-                    <p className="muted">
-                      Os novos aportes priorizam classes abaixo da meta, sem
-                      vender posições.
-                    </p>
-                  </div>
-                  <Icon name="bullseye" />
-                </div>
-                {portfolio.targets.length === 0 ? (
-                  <EmptyState
-                    title="Defina as metas da carteira"
-                    description="Distribua 100% entre as classes em que pretende investir."
-                    action={
-                      <Button
-                        variant="secondary"
-                        onClick={() => setEditing(true)}
-                      >
-                        Definir metas
-                      </Button>
-                    }
-                  />
-                ) : (
-                  <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">Classe</th>
-                          <th scope="col">Atual</th>
-                          <th scope="col">Meta</th>
-                          <th scope="col">Faixa definida</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {portfolio.targets.map((target) => (
-                          <tr key={target.assetClass}>
-                            <td>{label(target.assetClass)}</td>
-                            <td>
-                              {total > 0
-                                ? formatPercent(
-                                    ((currentByClass.get(target.assetClass) ??
-                                      0) /
-                                      total) *
-                                      100,
-                                  )
-                                : "—"}
-                            </td>
-                            <td>
-                              <strong>
-                                {formatPercent(target.targetPercentage, 4)}
-                              </strong>
-                            </td>
-                            <td>
-                              {formatPercent(target.minimumPercentage, 4)} a{" "}
-                              {formatPercent(target.maximumPercentage, 4)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </section>
+              
             </div>
           ))}
       </ResourceState>
@@ -285,25 +200,12 @@ function PortfolioEditor({
       amount: String(position.currentValue.amount),
     })),
   );
-  const [targets, setTargets] = useState<TargetDraft[]>(() =>
-    portfolio.targets.map((target, index) => ({
-      key: `target-${index}`,
-      assetClass: target.assetClass,
-      target: String(target.targetPercentage),
-      minimum: String(target.minimumPercentage),
-      maximum: String(target.maximumPercentage),
-    })),
-  );
   const [currency, setCurrency] = useState(
     portfolio.positions[0]?.currentValue.currency ?? "BRL",
   );
   const [review, setReview] = useState<ReplacePortfolioRequest | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const targetTotal = targets.reduce(
-    (sum, target) => sum + Number(target.target),
-    0,
-  );
   const removedCodes = review
     ? portfolio.positions
         .filter(
@@ -319,14 +221,6 @@ function PortfolioEditor({
     setPositions((current) =>
       current.map((position) =>
         position.key === key ? { ...position, ...values } : position,
-      ),
-    );
-  }
-
-  function updateTarget(key: string, values: Partial<TargetDraft>) {
-    setTargets((current) =>
-      current.map((target) =>
-        target.key === key ? { ...target, ...values } : target,
       ),
     );
   }
@@ -351,38 +245,6 @@ function PortfolioEditor({
       );
       return;
     }
-    if (targets.length === 0) {
-      setError("Adicione pelo menos uma meta de alocação.");
-      return;
-    }
-    if (
-      new Set(targets.map((target) => target.assetClass)).size !==
-      targets.length
-    ) {
-      setError("Cada classe de ativo deve ter apenas uma meta.");
-      return;
-    }
-    if (
-      targets.reduce(
-        (sum, target) => sum + Math.round(Number(target.target) * 10000),
-        0,
-      ) !== 1000000
-    ) {
-      setError("As metas de alocação precisam somar exatamente 100%.");
-      return;
-    }
-    if (
-      targets.some(
-        (target) =>
-          Number(target.minimum) > Number(target.target) ||
-          Number(target.target) > Number(target.maximum),
-      )
-    ) {
-      setError(
-        "A meta de cada classe precisa ficar entre o mínimo e o máximo.",
-      );
-      return;
-    }
     setReview({
       positions: positions.map((position) => ({
         assetCode: position.assetCode.trim().toUpperCase(),
@@ -392,12 +254,6 @@ function PortfolioEditor({
           amount: position.amount,
           currency: currency.trim().toUpperCase(),
         },
-      })),
-      targets: targets.map((target) => ({
-        assetClass: target.assetClass,
-        targetPercentage: Number(target.target),
-        minimumPercentage: Number(target.minimum),
-        maximumPercentage: Number(target.maximum),
       })),
     });
   }
@@ -425,7 +281,7 @@ function PortfolioEditor({
     <>
       <form className="stack" onSubmit={prepareReview}>
         <Alert tone="info">
-          Edite sua carteira completa. As posições e metas removidas desta lista
+          Edite sua carteira completa. As posições removidas desta lista
           deixarão de fazer parte da carteira ao salvar.
         </Alert>
         {error && !review && <Alert tone="error">{error}</Alert>}
@@ -472,8 +328,7 @@ function PortfolioEditor({
           </Field>
           {positions.length === 0 && (
             <p className="muted section-description">
-              Nenhum ativo nesta carteira. Você pode definir as metas antes de
-              adicionar posições.
+              Nenhum ativo nesta carteira. Adicione os investimentos que você já possui.
             </p>
           )}
           <div className="stack">
@@ -560,135 +415,7 @@ function PortfolioEditor({
           </div>
         </section>
 
-        <section className="panel">
-          <div className="panel-head">
-            <div>
-              <h2>Metas de alocação</h2>
-              <p className="muted">
-                Total definido: {formatPercent(targetTotal, 4)} de 100%.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={targets.length >= assetClasses.length}
-              onClick={() =>
-                setTargets((current) => [
-                  ...current,
-                  {
-                    key: crypto.randomUUID(),
-                    assetClass:
-                      assetClasses.find(
-                        (assetClass) =>
-                          !current.some(
-                            (target) => target.assetClass === assetClass,
-                          ),
-                      ) ?? "CASH",
-                    target: "",
-                    minimum: "0",
-                    maximum: "100",
-                  },
-                ])
-              }
-            >
-              <Icon name="plus-lg" />
-              Adicionar meta
-            </Button>
-          </div>
-          {targets.length === 0 && (
-            <p className="muted">
-              Adicione classes e distribua 100% entre elas.
-            </p>
-          )}
-          <div className="stack">
-            {targets.map((target, index) => (
-              <fieldset key={target.key} className="editor-row">
-                <legend>Meta {index + 1}</legend>
-                <div className="form-grid">
-                  <Field label="Classe">
-                    <select
-                      aria-label={`Classe da meta ${index + 1}`}
-                      value={target.assetClass}
-                      onChange={(event) =>
-                        updateTarget(target.key, {
-                          assetClass: event.target.value as AssetClass,
-                        })
-                      }
-                    >
-                      {assetClasses.map((assetClass) => (
-                        <option key={assetClass} value={assetClass}>
-                          {label(assetClass)}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Meta (%)">
-                    <input
-                      aria-label={`Percentual da meta ${index + 1}`}
-                      type="number"
-                      inputMode="decimal"
-                      required
-                      min="0"
-                      max="100"
-                      step="0.0001"
-                      value={target.target}
-                      onChange={(event) =>
-                        updateTarget(target.key, { target: event.target.value })
-                      }
-                    />
-                  </Field>
-                  <Field label="Mínimo (%)">
-                    <input
-                      aria-label={`Mínimo da meta ${index + 1}`}
-                      type="number"
-                      inputMode="decimal"
-                      required
-                      min="0"
-                      max="100"
-                      step="0.0001"
-                      value={target.minimum}
-                      onChange={(event) =>
-                        updateTarget(target.key, {
-                          minimum: event.target.value,
-                        })
-                      }
-                    />
-                  </Field>
-                  <Field label="Máximo (%)">
-                    <input
-                      aria-label={`Máximo da meta ${index + 1}`}
-                      type="number"
-                      inputMode="decimal"
-                      required
-                      min="0"
-                      max="100"
-                      step="0.0001"
-                      value={target.maximum}
-                      onChange={(event) =>
-                        updateTarget(target.key, {
-                          maximum: event.target.value,
-                        })
-                      }
-                    />
-                  </Field>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() =>
-                    setTargets((current) =>
-                      current.filter((item) => item.key !== target.key),
-                    )
-                  }
-                  aria-label={`Remover meta de ${label(target.assetClass)}`}
-                >
-                  <Icon name="trash3" />
-                  Remover meta
-                </Button>
-              </fieldset>
-            ))}
-          </div>
-        </section>
+        
         <div className="form-actions">
           <Button type="button" variant="secondary" onClick={onCancel}>
             Cancelar edição
@@ -708,19 +435,13 @@ function PortfolioEditor({
           <div className="stack">
             <Alert tone="info">
               Ao salvar, a carteira atual será substituída integralmente pelas
-              posições e metas desta revisão.
+              posições desta revisão.
             </Alert>
             <dl className="detail-list">
               <div className="detail-row">
                 <dt>Posições</dt>
                 <dd>
                   {portfolio.positions.length} → {review.positions.length}
-                </dd>
-              </div>
-              <div className="detail-row">
-                <dt>Metas de alocação</dt>
-                <dd>
-                  {portfolio.targets.length} → {review.targets.length}
                 </dd>
               </div>
               <div className="detail-row">
@@ -772,30 +493,7 @@ function PortfolioEditor({
                 </tbody>
               </table>
             </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <caption>Metas a salvar</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">Classe</th>
-                    <th scope="col">Meta</th>
-                    <th scope="col">Faixa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {review.targets.map((target) => (
-                    <tr key={target.assetClass}>
-                      <td>{label(target.assetClass)}</td>
-                      <td>{formatPercent(target.targetPercentage, 4)}</td>
-                      <td>
-                        {formatPercent(target.minimumPercentage, 4)} a{" "}
-                        {formatPercent(target.maximumPercentage, 4)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            
             {error && <Alert tone="error">{error}</Alert>}
             <div className="form-actions">
               <Button

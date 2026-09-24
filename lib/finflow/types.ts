@@ -221,19 +221,11 @@ export interface PortfolioPosition extends Omit<
 > {
   currentValue: Money;
 }
-export interface AllocationTarget {
-  assetClass: AssetClass;
-  targetPercentage: number;
-  minimumPercentage: number;
-  maximumPercentage: number;
-}
 export interface ReplacePortfolioRequest {
   positions: PortfolioPositionInput[];
-  targets: AllocationTarget[];
 }
 export interface Portfolio {
   positions: PortfolioPosition[];
-  targets: AllocationTarget[];
 }
 export interface ContributionAllocation {
   assetClass: AssetClass;
@@ -383,7 +375,5 @@ export type Obligation = MonthlyObligation;
 export type ObligationResponse = MonthlyObligation;
 export type PortfolioResponse = Portfolio;
 export type PortfolioPositionResponse = PortfolioPosition;
-export type AllocationTargetInput = AllocationTarget;
-export type AllocationTargetResponse = AllocationTarget;
 export type ConsentResponse = OpenFinanceConsent;
 export type MonthlyFinancialReport = MonthlyReport;

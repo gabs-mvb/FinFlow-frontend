@@ -25,7 +25,7 @@ const steps = [
     name: "Contas",
     title: "Comece por onde seu dinheiro está.",
     description:
-      "Adicione pelo menos uma conta e seu saldo atual. Escolha a finalidade Dia a dia para o dinheiro usado nas despesas do mês.",
+      "Adicione suas contas e o saldo atual de cada uma. O saldo disponível será calculado a partir delas. Escolha Dia a dia para o dinheiro usado nas despesas do mês.",
     hint: "Conta obrigatória",
   },
   {
@@ -53,7 +53,7 @@ const steps = [
     name: "Carteira",
     title: "Organize o que você já investe.",
     description:
-      "Registre seus ativos e distribua as metas de alocação entre as classes. Essas metas orientam os próximos aportes. Se ainda não investe, pode deixar para depois.",
+      "Registre os ativos que você já possui e seus valores atuais. Se ainda não investe, pode deixar para depois.",
     hint: "Opcional",
   },
   {
