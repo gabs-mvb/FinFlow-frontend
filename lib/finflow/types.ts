@@ -70,6 +70,7 @@ export type ConsentScope =
   | "CREDIT_OPERATIONS"
   | "INVESTMENTS";
 export type ActionType =
+  | "CUSTOM"
   | "RESERVE_FOR_OBLIGATIONS"
   | "REDUCE_VARIABLE_SPENDING"
   | "PAY_HIGH_COST_DEBT"
@@ -274,6 +275,10 @@ export interface ActionIntent {
   executionAvailable: boolean;
 }
 export interface FinancialPlan {
+  details?: PlanDetails;
+  content?: PlanContent | null;
+  revision?: number;
+  updatedAt?: string | null;
   id: string;
   asOf: string;
   nextIncomeDate: string;
@@ -294,6 +299,46 @@ export interface FinancialPlan {
   actions: ActionIntent[];
   warnings: string[];
   generatedAt: string;
+}
+export interface CategoryBudget {
+  category: TransactionCategory;
+  amount: number;
+  reason: string;
+}
+export interface PlanDetails {
+  source: "AI" | "MANUAL" | "RULE_BASED";
+  summary: string;
+  analysis: string;
+  categoryBudgets: CategoryBudget[];
+  model?: string | null;
+  promptVersion?: string | null;
+}
+export interface PlanContent {
+  asOf: string;
+  nextIncomeDate: string;
+  summary: string;
+  analysis: string;
+  emergencyReserveTarget: number;
+  remainingVariableBudget: number;
+  minimumCashBuffer: number;
+  debtPaymentRecommendation: number;
+  reserveContribution: number;
+  investmentContribution: number;
+  dailySpendingLimit: number;
+  categoryBudgets: CategoryBudget[];
+  allocations: { assetClass: AssetClass; amount: number }[];
+  actions: {
+    type: ActionType;
+    amount: number;
+    riskLevel: RiskLevel;
+    rationale: string;
+  }[];
+  warnings: string[];
+}
+export interface PlanRevision {
+  revision: number;
+  capturedAt: string;
+  plan: FinancialPlan;
 }
 export interface CategoryExpense {
   category: TransactionCategory;

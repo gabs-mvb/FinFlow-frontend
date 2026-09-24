@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PlanDetailsView } from "@/components/plan-details";
 import { useResource, invalidateResources } from "@/hooks/use-resource";
 import type {
   FinancialAccount,
@@ -180,11 +181,16 @@ export function OverviewPage() {
         )}
       </ResourceState>
       {current && (
+        <section className="panel page-section">
+          <PlanDetailsView plan={current} compact />
+        </section>
+      )}
+      {current && (
         <div className="snapshot-note">
           <Icon name="clock-history" />
           <span>
             Plano de {calendarDate(current.asOf)}. Alterou algum valor?{" "}
-            <Link href="/plano">Gere um novo plano.</Link>
+            <Link href="/plano">Revise ou gere um novo plano.</Link>
           </span>
         </div>
       )}

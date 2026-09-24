@@ -6,6 +6,7 @@ import { invalidateResources } from "@/hooks/use-resource";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { api, ApiError } from "@/lib/finflow/api";
 import { createFirstPlan, saveOnboardingProfile } from "@/lib/onboarding";
+import { PlanDetailsView, PlanPreferences } from "@/components/plan-details";
 import { CommitmentsPage } from "@/components/features/commitments";
 import { useMonthlyBudget } from "@/hooks/use-monthly-budget";
 import { MonthlyBudgetSummary, ProfileSteps } from "./monthly-budget";
@@ -106,6 +107,7 @@ function PlanForm({
   // Review only saved values; returning to the plan must not submit an unfinished edit.
   const draft = stage === "plan" && savedDraft ? savedDraft : editableDraft;
   const [asOf, setAsOf] = useState(localDate);
+  const [preferences, setPreferences] = useState("");
   const budget = useMonthlyBudget(
     draft.currency,
     asOf,
@@ -185,7 +187,7 @@ function PlanForm({
         setResult(undefined);
         invalidateResources(["/profile", "/onboarding", "/reports"]);
       } else {
-        const plan = await createFirstPlan(payload, asOf);
+        const plan = await createFirstPlan(payload, asOf, preferences);
         setResult(plan);
         invalidateResources([
           "/onboarding",
@@ -255,6 +257,7 @@ function PlanForm({
             detail="Valor que pode faltar para cobrir o período"
           />
         </div>
+        <PlanDetailsView plan={result} />
         {result.warnings.map((warning, i) => (
           <Alert key={i} tone="info">
             {warning}
@@ -620,10 +623,8 @@ function PlanForm({
           {budget.debtPayments > 0 && (
             <Alert tone="info">
               O gasto mensal previsto inclui suas parcelas. No cálculo atual do
-              plano, elas não são todas descontadas automaticamente do saldo
-              livre: são protegidos os compromissos por vencimento e priorizadas
-              as dívidas de juros altos. Revise esse limite antes de usar o
-              saldo livre como referência.
+              plano, confira os pagamentos recomendados e os compromissos
+              protegidos antes de usar o saldo livre como referência.
             </Alert>
           )}
           <p className="muted">
@@ -693,6 +694,15 @@ function PlanForm({
               onChange={(e) => setAsOf(e.target.value)}
             />
           </Field>
+          <PlanPreferences
+            value={preferences}
+            onChange={setPreferences}
+            disabled={busy}
+          />
+          <p className="muted">
+            A geração usa IA quando habilitada no serviço. Preferências
+            solicitam uma análise com IA. Isso pode levar até três minutos.
+          </p>
         </section>
       )}
       <div className="onboarding-footer">

@@ -1,4 +1,5 @@
 import { api } from "./finflow/api";
+import { planningError } from "./finflow/planning";
 import type {
   FinancialAccount,
   FinancialPlan,
@@ -37,6 +38,7 @@ export async function saveOnboardingProfile(
 export async function createFirstPlan(
   profile: UpsertFinancialProfileRequest,
   asOf: string,
+  preferences = "",
 ): Promise<FinancialPlan> {
   const [accounts, status] = await Promise.all([
     api.get<FinancialAccount[]>("/accounts"),
@@ -48,11 +50,12 @@ export async function createFirstPlan(
   else await api.post("/onboarding/complete", profile);
   try {
     return await api.post<FinancialPlan>(
-      `/plans?asOf=${encodeURIComponent(asOf)}`,
+      preferences.trim()
+        ? "/plans/personalized"
+        : `/plans?asOf=${encodeURIComponent(asOf)}`,
+      preferences.trim() ? { asOf, preferences } : undefined,
     );
   } catch (cause) {
-    throw new Error(
-      `Seu perfil foi salvo, mas o plano não foi gerado. ${cause instanceof Error ? cause.message : "Tente novamente."}`,
-    );
+    throw new Error(`Seu perfil foi salvo. ${planningError(cause)}`);
   }
 }

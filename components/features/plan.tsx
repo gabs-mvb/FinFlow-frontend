@@ -16,6 +16,9 @@ import { invalidateResources, useResource } from "@/hooks/use-resource";
 import { api } from "@/lib/finflow/api";
 import { formatDate, formatMoney, label } from "@/lib/finflow/format";
 import type { ActionIntent, FinancialPlan } from "@/lib/finflow/types";
+import { PlanDetailsView, PlanPreferences } from "@/components/plan-details";
+import { PlanEditor, PlanHistory } from "@/components/plan-editor";
+import { planningError } from "@/lib/finflow/planning";
 
 function today() {
   const date = new Date();
@@ -25,6 +28,9 @@ function today() {
 export function PlanPage() {
   const resource = useResource<FinancialPlan>("/plans/latest");
   const [asOf, setAsOf] = useState(today);
+  const [preferences, setPreferences] = useState("");
+  const [editing, setEditing] = useState<FinancialPlan | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [reviewing, setReviewing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,27 +39,30 @@ export function PlanPage() {
 
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (generating || reviewing || editing) return;
     setGenerating(true);
     setError(null);
     setMessage(null);
     try {
-      await api.post<FinancialPlan>(`/plans?asOf=${encodeURIComponent(asOf)}`);
+      await api.post<FinancialPlan>(
+        preferences.trim()
+          ? "/plans/personalized"
+          : `/plans?asOf=${encodeURIComponent(asOf)}`,
+        preferences.trim() ? { asOf, preferences } : undefined,
+      );
       invalidateResources(["/plans"]);
       setMessage(
         "Plano atualizado com seus dados financeiros. Revise as recomendações abaixo.",
       );
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Não foi possível gerar o plano. Tente novamente.",
-      );
+      setError(planningError(cause));
     } finally {
       setGenerating(false);
     }
   }
 
   async function review(action: ActionIntent, approve: boolean) {
+    if (generating || reviewing || editing || resource.isValidating) return;
     setReviewing(action.id);
     setError(null);
     setMessage(null);
@@ -84,34 +93,97 @@ export function PlanPage() {
         title="Seu próximo passo"
         description="Um plano para atravessar o mês e avançar nas suas prioridades."
       />
-      <form onSubmit={generate} className="panel inline-form page-section">
+      <form onSubmit={generate} className="panel stack page-section">
         <Field label="Data de referência">
           <input
             type="date"
             aria-label="Data de referência"
             required
+            disabled={generating || !!editing}
             value={asOf}
             onChange={(event) => setAsOf(event.target.value)}
           />
         </Field>
-        <Button type="submit" disabled={generating || reviewing !== null}>
+        <PlanPreferences
+          value={preferences}
+          onChange={setPreferences}
+          disabled={generating || !!editing}
+        />
+        <Button
+          type="submit"
+          disabled={
+            generating ||
+            reviewing !== null ||
+            !!editing ||
+            resource.isValidating
+          }
+        >
           <Icon name={generating ? "hourglass-split" : "arrow-repeat"} />
           {generating
-            ? "Calculando plano…"
+            ? "Analisando seus dados…"
             : plan
               ? "Gerar novo plano"
               : "Gerar meu plano"}
         </Button>
         <p className="muted">
-          O cálculo considera contas, gastos, compromissos e seu{" "}
-          <Link href="/perfil">perfil financeiro</Link>.
+          A análise considera contas, gastos, compromissos e seu{" "}
+          <Link href="/perfil">perfil financeiro</Link>. Sem preferências, a
+          geração usa IA quando disponível na configuração do serviço, ou o
+          cálculo por regras. A análise pode levar até três minutos.
         </p>
       </form>
       {error && <Alert tone="error">{error}</Alert>}
       {message && <Alert tone="success">{message}</Alert>}
+      {editing && (
+        <PlanEditor
+          plan={editing}
+          onClose={() => {
+            setEditing(null);
+            invalidateResources(["/plans"]);
+          }}
+          onSaved={() => {
+            setEditing(null);
+            setMessage(
+              "Proposta salva. Revise novamente as ações antes de aprovar.",
+            );
+          }}
+        />
+      )}
       <ResourceState resource={resource}>
         {plan ? (
           <div className="stack">
+            <section className="panel stack">
+              <PlanDetailsView plan={plan} />
+              <div className="row">
+                {plan.content && plan.revision !== undefined && (
+                  <Button
+                    variant="secondary"
+                    disabled={
+                      generating ||
+                      !!reviewing ||
+                      !!editing ||
+                      resource.isValidating
+                    }
+                    onClick={() => {
+                      setError(null);
+                      setMessage(null);
+                      setEditing(plan);
+                    }}
+                  >
+                    Editar proposta
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowHistory(!showHistory)}
+                >
+                  {showHistory
+                    ? "Ocultar histórico"
+                    : "Ver histórico de revisões"}
+                </Button>
+              </div>
+            </section>
+            {showHistory && <PlanHistory key={plan.id} id={plan.id} />}
             <section className="panel">
               <div className="panel-head">
                 <div>
@@ -121,7 +193,6 @@ export function PlanPage() {
                     {formatDate(plan.nextIncomeDate)}.
                   </p>
                 </div>
-                <span className="badge">Plano calculado</span>
               </div>
               <div className="metric-grid">
                 <Stat
@@ -219,9 +290,8 @@ export function PlanPage() {
                   a dia.
                 </p>
                 <p className="muted">
-                  Os saldos de contas e a meta de reserva refletem a consulta
-                  atual. As recomendações foram calculadas em{" "}
-                  {formatDate(plan.generatedAt)}.
+                  Os valores refletem a referência do plano. As recomendações
+                  foram geradas em {formatDate(plan.generatedAt)}.
                 </p>
               </section>
             </div>
@@ -273,13 +343,23 @@ export function PlanPage() {
                           <div className="row">
                             <Button
                               variant="secondary"
-                              disabled={reviewing !== null || generating}
+                              disabled={
+                                reviewing !== null ||
+                                generating ||
+                                !!editing ||
+                                resource.isValidating
+                              }
                               onClick={() => void review(action, false)}
                             >
                               Recusar
                             </Button>
                             <Button
-                              disabled={reviewing !== null || generating}
+                              disabled={
+                                reviewing !== null ||
+                                generating ||
+                                !!editing ||
+                                resource.isValidating
+                              }
                               onClick={() => void review(action, true)}
                             >
                               {reviewing === action.id

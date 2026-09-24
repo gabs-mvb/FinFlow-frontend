@@ -33,6 +33,10 @@ const routes: { pattern: RegExp; methods: string[]; query?: string[] }[] = [
   { pattern: /^\/open-finance\/consents$/, methods: ["GET", "PUT"] },
   { pattern: /^\/plans$/, methods: ["POST"], query: ["asOf"] },
   { pattern: /^\/plans\/latest$/, methods: ["GET"] },
+  { pattern: /^\/plans\/personalized$/, methods: ["POST"] },
+  { pattern: new RegExp(`^/plans/${uuid}$`), methods: ["GET", "PUT"] },
+  { pattern: new RegExp(`^/plans/${uuid}/content$`), methods: ["PUT"] },
+  { pattern: new RegExp(`^/plans/${uuid}/revisions$`), methods: ["GET"] },
   {
     pattern: new RegExp(`^/plans/actions/${uuid}/(approve|reject)$`),
     methods: ["PATCH"],
