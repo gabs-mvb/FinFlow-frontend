@@ -35,11 +35,17 @@ export function PageHeading({
   title,
   description,
   actions,
+  embedded = false,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  embedded?: boolean;
 }) {
+  if (embedded)
+    return actions ? (
+      <div className="onboarding-record-actions">{actions}</div>
+    ) : null;
   return (
     <header className="page-heading">
       <div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Alert,
   Button,
@@ -48,9 +48,19 @@ type TargetDraft = {
   maximum: string;
 };
 
-export function PortfolioPage() {
+export function PortfolioPage({
+  onboarding = false,
+  onEditingChange,
+}: {
+  onboarding?: boolean;
+  onEditingChange?: (editing: boolean) => void;
+}) {
   const resource = useResource<Portfolio>("/portfolio");
   const [editing, setEditing] = useState(false);
+  useEffect(() => {
+    onEditingChange?.(editing);
+    return () => onEditingChange?.(false);
+  }, [editing, onEditingChange]);
   const [saved, setSaved] = useState(false);
   const portfolio = resource.data;
   const total =
@@ -71,6 +81,7 @@ export function PortfolioPage() {
   return (
     <>
       <PageHeading
+        embedded={onboarding}
         title="Sua carteira"
         description="Acompanhe as posições e defina o destino dos próximos aportes."
         actions={
@@ -89,8 +100,10 @@ export function PortfolioPage() {
       />
       {saved && (
         <Alert tone="success">
-          Carteira salva. Gere um novo plano para atualizar as sugestões de
-          aporte.
+          Carteira salva.{" "}
+          {onboarding
+            ? "Suas metas de alocação vão orientar as sugestões de aporte."
+            : "Gere um novo plano para atualizar as sugestões de aporte."}
         </Alert>
       )}
       <ResourceState resource={resource}>

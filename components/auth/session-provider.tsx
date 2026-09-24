@@ -121,6 +121,7 @@ export function useSession() {
 }
 
 const destinations = new Set([
+  "/onboarding",
   "/",
   "/contas",
   "/transacoes",

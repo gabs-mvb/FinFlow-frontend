@@ -33,6 +33,14 @@ const session = await import(
   })
 );
 const { api, ApiError } = await import(await moduleUrl("lib/finflow/api.ts"));
+const onboarding = await import(
+  await moduleUrl("lib/onboarding.ts", {
+    "./finflow/api": await moduleUrl("lib/finflow/api.ts"),
+  })
+);
+const { monthlyBudget } = await import(
+  await moduleUrl("lib/monthly-budget.ts")
+);
 const auth = await import(
   await moduleUrl("app/api/finflow/auth/[action]/route.ts", {
     "@/lib/finflow/server": serverUrl,
@@ -77,6 +85,255 @@ function context(path) {
     }),
   };
 }
+
+test("monthly budget adds installments, commitments and variable spending once, in cents", () => {
+  const amount = (value) => ({ amount: value, currency: "BRL" });
+  const budget = monthlyBudget(
+    [
+      {
+        status: "ACTIVE",
+        outstandingAmount: amount(50000),
+        monthlyPayment: amount(100.1),
+      },
+    ],
+    [
+      { status: "PENDING", dueDate: "2026-09-25", amount: amount(1200.2) },
+      { status: "PAID", dueDate: "2026-09-01", amount: amount(100.1) },
+    ],
+    "BRL",
+    "2026-09",
+    500.3,
+  );
+  assert.deepEqual(budget, {
+    debtPayments: 100.1,
+    commitments: 1300.3,
+    variable: 500.3,
+    fixed: 1400.4,
+    total: 1900.7,
+  });
+});
+
+test("budget excludes inactive debts, cancelled commitments, other months and currencies", () => {
+  const brl = (amount) => ({ amount, currency: "BRL" });
+  const usd = (amount) => ({ amount, currency: "USD" });
+  const budget = monthlyBudget(
+    [
+      { status: "ACTIVE", monthlyPayment: brl(30) },
+      { status: "PAID", monthlyPayment: brl(100) },
+      { status: "RENEGOTIATED", monthlyPayment: brl(100) },
+      { status: "ACTIVE", monthlyPayment: usd(100) },
+    ],
+    [
+      { status: "PENDING", dueDate: "2026-09-24", amount: brl(20) },
+      { status: "CANCELLED", dueDate: "2026-09-24", amount: brl(100) },
+      { status: "PENDING", dueDate: "2026-10-01", amount: brl(100) },
+      { status: "PENDING", dueDate: "2026-08-31", amount: brl(100) },
+      { status: "PENDING", dueDate: "2026-09-24", amount: usd(100) },
+    ],
+    "BRL",
+    "2026-09",
+    10,
+  );
+  assert.equal(budget.total, 60);
+  assert.equal(monthlyBudget([], [], "BRL", "2026-09", 0).total, 0);
+});
+
+test("onboarding proxy allows only status GET and completion POST and forwards the profile", async () => {
+  process.env.FINFLOW_API_URL = "http://backend.internal:8080";
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), method: init.method, body: init.body });
+    return Response.json({ completed: true });
+  };
+  assert.equal(
+    (await proxy.GET(request("/onboarding"), context("/onboarding"))).status,
+    200,
+  );
+  assert.equal(
+    (
+      await proxy.POST(
+        request("/onboarding/complete", "POST", { payDay: 5 }),
+        context("/onboarding/complete"),
+      )
+    ).status,
+    200,
+  );
+  assert.deepEqual(calls, [
+    {
+      url: "http://backend.internal:8080/api/v1/onboarding",
+      method: "GET",
+      body: undefined,
+    },
+    {
+      url: "http://backend.internal:8080/api/v1/onboarding/complete",
+      method: "POST",
+      body: '{"payDay":5}',
+    },
+  ]);
+  assert.equal(
+    (await proxy.POST(request("/onboarding", "POST"), context("/onboarding")))
+      .status,
+    405,
+  );
+  assert.equal(
+    (
+      await proxy.GET(
+        request("/onboarding/complete"),
+        context("/onboarding/complete"),
+      )
+    ).status,
+    405,
+  );
+  assert.equal(
+    (
+      await proxy.POST(
+        request(
+          "/onboarding/complete",
+          "POST",
+          {},
+          { Origin: "https://foreign.example" },
+        ),
+        context("/onboarding/complete"),
+      )
+    ).status,
+    403,
+  );
+});
+
+test("profile comes first and persisted progress cannot skip either mandatory step", () => {
+  assert.equal(onboarding.resumeStep("6", true, false), 0);
+  assert.equal(onboarding.resumeStep("6", false, false), 0);
+  assert.equal(onboarding.resumeStep("6", false, true), 1);
+  assert.equal(onboarding.resumeStep(null, true, true), 2);
+  assert.equal(onboarding.resumeStep("3", true, true), 3);
+  assert.equal(onboarding.resumeStep("900", true, true), 2);
+  assert.equal(onboarding.resumeStep("NaN", true, true), 2);
+  assert.equal(onboarding.resumeStep("0", true, true), 0);
+  assert.equal(onboarding.resumeStep("6", true, true), 6);
+});
+
+test("old progress maps to the reordered steps without losing saved records", () => {
+  assert.deepEqual(
+    ["0", "1", "2", "3", "4", "5", "6"].map(onboarding.migrateOnboardingStep),
+    ["1", "2", "3", "4", "5", "0", "6"],
+  );
+  assert.equal(onboarding.migrateOnboardingStep(null), null);
+  assert.equal(onboarding.migrateOnboardingStep("900"), null);
+});
+
+test("mandatory profile is saved before accounts and edits use the profile endpoint", async () => {
+  let completed = false;
+  const calls = [];
+  const profile = {
+    payDay: 5,
+    monthlyIncome: { amount: 4000, currency: "BRL" },
+  };
+  globalThis.fetch = async (url, init) => {
+    calls.push([url, init.method, init.body]);
+    if (url.endsWith("/onboarding")) return Response.json({ completed });
+    completed = true;
+    return Response.json({ completed });
+  };
+  await onboarding.saveOnboardingProfile(profile);
+  await onboarding.saveOnboardingProfile({ ...profile, payDay: 10 });
+  assert.deepEqual(
+    calls.filter(([, method]) => method !== "GET"),
+    [
+      ["/api/finflow/onboarding/complete", "POST", JSON.stringify(profile)],
+      [
+        "/api/finflow/profile",
+        "PUT",
+        JSON.stringify({ ...profile, payDay: 10 }),
+      ],
+    ],
+  );
+  assert.equal(
+    calls.some(([url]) => url.endsWith("/accounts")),
+    false,
+  );
+});
+
+test("first plan requires a saved account and saves the profile before generating", async () => {
+  const calls = [];
+  const profile = {
+    payDay: 12,
+    monthlyIncome: { amount: 3000, currency: "BRL" },
+  };
+  globalThis.fetch = async (url, init) => {
+    calls.push([url, init.method, init.body]);
+    if (url.endsWith("/accounts")) return Response.json([{ id: "account" }]);
+    if (url.endsWith("/onboarding")) return Response.json({ completed: false });
+    if (url.includes("/plans?")) return Response.json({ id: "first-plan" });
+    return Response.json({ completed: true });
+  };
+  assert.equal(
+    (await onboarding.createFirstPlan(profile, "2026-09-23")).id,
+    "first-plan",
+  );
+  assert.deepEqual(
+    calls.filter(([, method]) => method !== "GET"),
+    [
+      ["/api/finflow/onboarding/complete", "POST", JSON.stringify(profile)],
+      ["/api/finflow/plans?asOf=2026-09-23", "POST", undefined],
+    ],
+  );
+  calls.length = 0;
+  globalThis.fetch = async (url, init) => {
+    calls.push(init.method);
+    return Response.json(url.endsWith("/accounts") ? [] : { completed: false });
+  };
+  await assert.rejects(
+    onboarding.createFirstPlan(profile, "2026-09-23"),
+    /Adicione uma conta/,
+  );
+  assert.deepEqual(calls, ["GET", "GET"]);
+});
+
+test("a failed generation preserves completion and a retry updates the profile", async () => {
+  let completed = false;
+  let attempts = 0;
+  const mutations = [];
+  globalThis.fetch = async (url, init) => {
+    if (url.endsWith("/accounts")) return Response.json([{ id: "account" }]);
+    if (url.endsWith("/onboarding")) return Response.json({ completed });
+    mutations.push([url, init.method]);
+    if (url.endsWith("/onboarding/complete")) {
+      completed = true;
+      return Response.json({ completed });
+    }
+    if (url.endsWith("/profile")) return Response.json({});
+    return ++attempts === 1
+      ? Response.json({ detail: "Tente novamente." }, { status: 503 })
+      : Response.json({ id: "recovered" });
+  };
+  await assert.rejects(
+    onboarding.createFirstPlan({}, "2026-09-23"),
+    /Seu perfil foi salvo/,
+  );
+  assert.equal(
+    (await onboarding.createFirstPlan({}, "2026-09-23")).id,
+    "recovered",
+  );
+  assert.deepEqual(
+    mutations.map(([, method]) => method),
+    ["POST", "POST", "PUT", "POST"],
+  );
+});
+
+test("profile failure does not generate a plan", async () => {
+  const mutations = [];
+  globalThis.fetch = async (url) => {
+    if (url.endsWith("/accounts")) return Response.json([{ id: "account" }]);
+    if (url.endsWith("/onboarding")) return Response.json({ completed: false });
+    mutations.push(url);
+    return Response.json({ detail: "Perfil inválido" }, { status: 400 });
+  };
+  await assert.rejects(
+    onboarding.createFirstPlan({}, "2026-09-23"),
+    /Perfil inválido/,
+  );
+  assert.deepEqual(mutations, ["/api/finflow/onboarding/complete"]);
+});
 
 test("proxy forwards PUT to the configured origin, uses JWT session credentials, and strips browser headers", async () => {
   process.env.FINFLOW_API_URL = "http://backend.internal:8080/api/v1";

@@ -11,6 +11,8 @@ type RouteContext = { params: Promise<{ path: string[] }> };
 const uuid =
   "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
 const routes: { pattern: RegExp; methods: string[]; query?: string[] }[] = [
+  { pattern: /^\/onboarding$/, methods: ["GET"] },
+  { pattern: /^\/onboarding\/complete$/, methods: ["POST"] },
   { pattern: /^\/profile$/, methods: ["GET", "PUT"] },
   { pattern: /^\/accounts$/, methods: ["GET", "POST"] },
   { pattern: new RegExp(`^/accounts/${uuid}/balance$`), methods: ["PATCH"] },

@@ -21,7 +21,7 @@ import {
   textInput,
 } from "@/components/ui";
 
-export function GoalsPage() {
+export function GoalsPage({ onboarding = false }: { onboarding?: boolean }) {
   const resource = useResource<FinancialGoal[]>("/goals");
   const [editing, setEditing] = useState<FinancialGoal | "new" | null>(null);
   const [notice, setNotice] = useState("");
@@ -33,13 +33,16 @@ export function GoalsPage() {
   return (
     <>
       <PageHeading
+        embedded={onboarding}
         title="Metas"
         description="Dê um destino ao dinheiro que você guarda."
         actions={
-          <Button onClick={() => setEditing("new")}>
-            <Icon name="plus-lg" />
-            Criar meta
-          </Button>
+          (!onboarding || !!resource.data?.length) && (
+            <Button onClick={() => setEditing("new")}>
+              <Icon name="plus-lg" />
+              Criar meta
+            </Button>
+          )
         }
       />
       {notice && <Alert tone="success">{notice}</Alert>}

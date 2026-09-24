@@ -21,7 +21,7 @@ import {
   textInput,
 } from "@/components/ui";
 
-export function AccountsPage() {
+export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
   const resource = useResource<FinancialAccount[]>("/accounts");
   const [query, setQuery] = useState("");
   const [purpose, setPurpose] = useState("");
@@ -44,75 +44,87 @@ export function AccountsPage() {
   return (
     <>
       <PageHeading
+        embedded={onboarding}
         title="Contas"
         description="Seu dinheiro, organizado por finalidade."
         actions={
-          <Button onClick={() => setEditing("new")}>
-            <Icon name="plus-lg" />
-            Adicionar conta
-          </Button>
+          (!onboarding || accounts.length > 0) && (
+            <Button onClick={() => setEditing("new")}>
+              <Icon name="plus-lg" />
+              Adicionar conta
+            </Button>
+          )
         }
       />
       {message && (
         <Alert tone="success">
-          {message} Gere um novo plano para recalcular os valores disponíveis.
+          {message}{" "}
+          {onboarding
+            ? "Você já pode continuar ou adicionar outra conta."
+            : "Gere um novo plano para recalcular os valores disponíveis."}
         </Alert>
       )}
-      <div className="account-summary">
-        <div>
-          <span>Saldo nas suas contas</span>
-          <div className="currency-totals">
-            {resource.data ? (
-              totalByCurrency(
-                accounts.map((account) => account.availableBalance),
-              ).map((value) => (
-                <strong key={value.currency}>{currency(value)}</strong>
-              ))
-            ) : (
-              <strong>—</strong>
-            )}
-            {resource.data && !accounts.length && <strong>Sem contas</strong>}
+      {(!onboarding || accounts.length > 0) && (
+        <div className="account-summary">
+          <div>
+            <span>Saldo nas suas contas</span>
+            <div className="currency-totals">
+              {resource.data ? (
+                totalByCurrency(
+                  accounts.map((account) => account.availableBalance),
+                ).map((value) => (
+                  <strong key={value.currency}>{currency(value)}</strong>
+                ))
+              ) : (
+                <strong>—</strong>
+              )}
+              {resource.data && !accounts.length && <strong>Sem contas</strong>}
+            </div>
+            <small>
+              {accounts.length}{" "}
+              {accounts.length === 1
+                ? "conta cadastrada"
+                : "contas cadastradas"}
+              {new Set(accounts.map((a) => a.availableBalance.currency)).size >
+                1 && " • Saldos separados por moeda"}
+            </small>
           </div>
-          <small>
-            {accounts.length}{" "}
-            {accounts.length === 1 ? "conta cadastrada" : "contas cadastradas"}
-            {new Set(accounts.map((a) => a.availableBalance.currency)).size >
-              1 && " • Saldos separados por moeda"}
-          </small>
+          <Icon name="wallet2" />
         </div>
-        <Icon name="wallet2" />
-      </div>
-      <div className="toolbar">
-        <label className="search-field">
-          <Icon name="search" />
-          <input
-            aria-label="Buscar conta ou instituição"
-            placeholder="Buscar conta ou instituição"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <select
-          aria-label="Filtrar finalidade"
-          value={purpose}
-          onChange={(event) => setPurpose(event.target.value)}
-        >
-          <option value="">Todas as finalidades</option>
-          {Object.entries(purposes).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <Button
-          variant="secondary"
-          aria-label="Atualizar contas"
-          disabled={resource.isValidating}
-          onClick={resource.refresh}
-        >
-          <Icon name="arrow-clockwise" />
-        </Button>
-      </div>
+      )}
+      {(!onboarding || accounts.length > 1) && (
+        <div className="toolbar">
+          <label className="search-field">
+            <Icon name="search" />
+            <input
+              aria-label="Buscar conta ou instituição"
+              placeholder="Buscar conta ou instituição"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <select
+            aria-label="Filtrar finalidade"
+            value={purpose}
+            onChange={(event) => setPurpose(event.target.value)}
+          >
+            <option value="">Todas as finalidades</option>
+            {Object.entries(purposes).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            aria-label="Atualizar contas"
+            disabled={resource.isValidating}
+            onClick={resource.refresh}
+          >
+            <Icon name="arrow-clockwise" />
+          </Button>
+        </div>
+      )}
       <section className="panel flush">
         <ResourceState resource={resource}>
           {filtered.length ? (

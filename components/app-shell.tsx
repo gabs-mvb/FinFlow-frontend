@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Alert, Button, Icon } from "./ui";
+import { useOnboarding } from "@/hooks/use-onboarding";
 import {
   SessionProvider,
   useSession,
@@ -44,6 +45,8 @@ function SessionGate({ children }: { children: ReactNode }) {
     (item) => item.href === pathname,
   );
   const authRoute = pathname === "/login" || pathname === "/cadastro";
+  const onboarding = useOnboarding(!!session?.authenticated && !authRoute);
+  const onboardingRoute = pathname === "/onboarding";
 
   useEffect(() => {
     if (session && !session.authenticated && !authRoute) {
@@ -54,6 +57,27 @@ function SessionGate({ children }: { children: ReactNode }) {
       );
     }
   }, [session, authRoute, pathname, router]);
+
+  useEffect(() => {
+    if (
+      session?.authenticated &&
+      !authRoute &&
+      !onboardingRoute &&
+      !onboarding.loading &&
+      !onboarding.error &&
+      !onboarding.completed
+    ) {
+      router.replace("/onboarding");
+    }
+  }, [
+    session,
+    authRoute,
+    onboardingRoute,
+    onboarding.loading,
+    onboarding.error,
+    onboarding.completed,
+    router,
+  ]);
 
   async function disconnect() {
     setSigningOut(true);
@@ -74,7 +98,7 @@ function SessionGate({ children }: { children: ReactNode }) {
   }
 
   if (authRoute) return children;
-  if (!session?.authenticated)
+  if (!session?.authenticated || (!onboardingRoute && onboarding.loading))
     return (
       <div className="initial-loading" role="status">
         <span className="brand-mark">
@@ -83,6 +107,25 @@ function SessionGate({ children }: { children: ReactNode }) {
           <span />
         </span>
         <p>Preparando seu espaço…</p>
+      </div>
+    );
+  if (onboardingRoute) return children;
+  if (onboarding.error)
+    return (
+      <main className="onboarding-gate stack">
+        <h1>Vamos retomar sua configuração</h1>
+        <Alert tone="error">{onboarding.error.message}</Alert>
+        <Button onClick={onboarding.refresh}>Tentar novamente</Button>
+        <Button variant="ghost" onClick={disconnect} disabled={signingOut}>
+          Sair da conta
+        </Button>
+        {sessionError && <Alert tone="error">{sessionError}</Alert>}
+      </main>
+    );
+  if (!onboarding.completed)
+    return (
+      <div className="initial-loading" role="status">
+        Abrindo sua configuração inicial…
       </div>
     );
   return (

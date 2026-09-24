@@ -1,4 +1,7 @@
 export type Money = { amount: number; currency: string };
+export interface OnboardingStatus {
+  completed: boolean;
+}
 export type MoneyInput = { amount: number | string; currency?: string };
 export type MoneyOutput = Money;
 export type AccountType = "CHECKING" | "SAVINGS" | "PAYMENT" | "INVESTMENT";

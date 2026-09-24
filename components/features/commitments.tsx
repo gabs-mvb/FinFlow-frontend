@@ -29,7 +29,19 @@ import {
 type Commitment = Debt | MonthlyObligation;
 const isDebt = (item: Commitment): item is Debt => "outstandingAmount" in item;
 
-export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
+export function CommitmentsPage({
+  kind,
+  onboarding = false,
+  initialCurrency = "BRL",
+  initialDueDate,
+  compact = false,
+}: {
+  kind: "debts" | "obligations";
+  onboarding?: boolean;
+  initialCurrency?: string;
+  initialDueDate?: string;
+  compact?: boolean;
+}) {
   const resource = useResource<Commitment[]>(`/${kind}`);
   const [creating, setCreating] = useState(false);
   const [paying, setPaying] = useState<Commitment | null>(null);
@@ -40,7 +52,13 @@ export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
   const open = items.filter(
     (item) => item.status === "ACTIVE" || item.status === "PENDING",
   );
-  const filtered = filter === "open" ? open : items;
+  const filtered = compact
+    ? items.filter((item) =>
+        isDebt(item) ? item.status === "ACTIVE" : item.status !== "CANCELLED",
+      )
+    : filter === "open"
+      ? open
+      : items;
   const title = debts ? "Dívidas" : "Compromissos";
   const action = debts ? "Adicionar dívida" : "Adicionar compromisso";
 
@@ -54,6 +72,7 @@ export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
   return (
     <>
       <PageHeading
+        embedded={onboarding}
         title={title}
         description={
           debts
@@ -61,78 +80,112 @@ export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
             : "Saiba o que vence a seguir e registre os pagamentos."
         }
         actions={
-          <Button onClick={() => setCreating(true)}>
-            <Icon name="plus-lg" />
-            {action}
-          </Button>
+          (!onboarding || items.length > 0) && (
+            <Button onClick={() => setCreating(true)}>
+              <Icon name="plus-lg" />
+              {action}
+            </Button>
+          )
         }
       />
       {notice && (
         <Alert tone="success">
-          {notice} Gere um novo plano para considerar a mudança.
+          {notice}{" "}
+          {onboarding
+            ? "Cadastro salvo. Ele já aparece nas outras etapas, sem precisar cadastrar novamente."
+            : "Gere um novo plano para considerar a mudança."}
         </Alert>
       )}
-      <section className="summary-strip">
-        <div>
-          <span>
-            {debts ? "Saldo devedor em aberto" : "Compromissos em aberto"}
-          </span>
-          <strong>
-            {resource.data
-              ? totalByCurrency(
-                  open.map((item) =>
-                    isDebt(item) ? item.outstandingAmount : item.amount,
-                  ),
-                )
-                  .map((value) => currency(value))
-                  .join(" / ") || "Nenhum valor pendente"
-              : "—"}
-          </strong>
-        </div>
-        <div>
-          <span>{debts ? "Dívidas ativas" : "Pagamentos pendentes"}</span>
-          <strong>{resource.data ? open.length : "—"}</strong>
-        </div>
-        {!debts && (
-          <div>
-            <span>Vencidos</span>
-            <strong className="expense">
-              {
-                open.filter(
-                  (item) => !isDebt(item) && item.dueDate < localDate(),
-                ).length
-              }
-            </strong>
+      {!compact && (!onboarding || items.length > 0) && (
+        <>
+          <section className="summary-strip">
+            <div>
+              <span>
+                {debts ? "Saldo devedor em aberto" : "Compromissos em aberto"}
+              </span>
+              <strong>
+                {resource.data
+                  ? totalByCurrency(
+                      open.map((item) =>
+                        isDebt(item) ? item.outstandingAmount : item.amount,
+                      ),
+                    )
+                      .map((value) => currency(value))
+                      .join(" / ") || "Nenhum valor pendente"
+                  : "—"}
+              </strong>
+            </div>
+            <div>
+              <span>{debts ? "Dívidas ativas" : "Pagamentos pendentes"}</span>
+              <strong>{resource.data ? open.length : "—"}</strong>
+            </div>
+            {!debts && (
+              <div>
+                <span>Vencidos</span>
+                <strong className="expense">
+                  {
+                    open.filter(
+                      (item) => !isDebt(item) && item.dueDate < localDate(),
+                    ).length
+                  }
+                </strong>
+              </div>
+            )}
+          </section>
+          <div className="toolbar">
+            <div className="segmented">
+              <button
+                aria-pressed={filter === "open"}
+                onClick={() => setFilter("open")}
+              >
+                Em aberto
+              </button>
+              <button
+                aria-pressed={filter === "all"}
+                onClick={() => setFilter("all")}
+              >
+                Todos
+              </button>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={resource.refresh}
+              disabled={resource.isValidating}
+            >
+              <Icon name="arrow-clockwise" />
+              Atualizar
+            </Button>
           </div>
-        )}
-      </section>
-      <div className="toolbar">
-        <div className="segmented">
-          <button
-            aria-pressed={filter === "open"}
-            onClick={() => setFilter("open")}
-          >
-            Em aberto
-          </button>
-          <button
-            aria-pressed={filter === "all"}
-            onClick={() => setFilter("all")}
-          >
-            Todos
-          </button>
-        </div>
-        <Button
-          variant="secondary"
-          onClick={resource.refresh}
-          disabled={resource.isValidating}
-        >
-          <Icon name="arrow-clockwise" />
-          Atualizar
-        </Button>
-      </div>
+        </>
+      )}
       <section className="panel flush">
         <ResourceState resource={resource}>
-          {filtered.length ? (
+          {compact && filtered.length ? (
+            <ul className="onboarding-expense-items">
+              {filtered.map((item) => (
+                <li key={item.id}>
+                  <div>
+                    <strong>{item.name}</strong>
+                    <small>
+                      {isDebt(item)
+                        ? `Saldo devedor: ${currency(item.outstandingAmount)}`
+                        : `Vencimento: ${calendarDate(item.dueDate)}${item.status === "PAID" ? " • Pago" : ""}`}
+                    </small>
+                  </div>
+                  <div>
+                    <strong>
+                      {currency(
+                        isDebt(item) ? item.monthlyPayment : item.amount,
+                      )}
+                    </strong>
+                    <small>
+                      {isDebt(item) ? "Parcela mensal" : "Compromisso"}
+                    </small>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : filtered.length ? (
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
@@ -297,7 +350,7 @@ export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
                   )}
                 </select>
               </Field>
-              <CurrencyField />
+              <CurrencyField value={initialCurrency} />
               <Field label={debts ? "Saldo devedor" : "Valor"}>
                 <input
                   required
@@ -340,7 +393,7 @@ export function CommitmentsPage({ kind }: { kind: "debts" | "obligations" }) {
                     required
                     type="date"
                     name="dueDate"
-                    defaultValue={localDate()}
+                    defaultValue={initialDueDate ?? localDate()}
                   />
                 </Field>
               )}

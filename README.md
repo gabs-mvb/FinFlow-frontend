@@ -70,12 +70,25 @@ O cadastro de usuários não cria, por si só, isolamento dos dados financeiros:
 
 ## Fluxo de uso
 
-1. Configure a renda, o dia de recebimento, os limites e as preferências em **Perfil**.
-2. Adicione contas e saldos, distinguindo dinheiro do dia a dia, reserva, metas e investimentos.
-3. Cadastre compromissos, dívidas e metas; importe as transações para montar o extrato.
-4. Configure posições e percentuais da carteira, se usar recomendações de aporte.
-5. Gere o plano e revise as intenções propostas. Depois de alterar as informações financeiras, gere um novo plano para recalcular as recomendações.
-6. Consulte o relatório do mês para revisar despesas, aportes e prioridades.
+1. No primeiro acesso, `/onboarding` abre antes do dashboard. Preencha o **Perfil financeiro**, a primeira etapa obrigatória, com orçamento, reserva e preferências. **Salvar perfil e continuar** grava os dados na API e libera a próxima etapa.
+2. Adicione pelo menos uma **conta**, a segunda etapa obrigatória. O perfil e a conta não podem ser pulados.
+3. Passe por **dívidas**, **compromissos**, **metas** e **carteira**, nessa ordem. Essas quatro etapas podem ser deixadas para depois.
+4. Em **Seu plano**, revise o perfil salvo, escolha a data de referência e gere o plano. **Editar perfil financeiro** volta à primeira etapa. O plano pode ser adiado, mas apenas após salvar o perfil e cadastrar uma conta. Depois de alterar informações financeiras, gere um novo plano para recalcular as recomendações.
+5. No painel, importe transações e consulte relatórios para acompanhar despesas, aportes e prioridades.
+
+O fluxo consulta `GET /api/v1/onboarding`, contas e último plano, compartilhando o cache com as telas. A navegação ao painel exige perfil confirmado pelo backend, conta cadastrada e um plano concluído ou a escolha explícita de deixá-lo para depois. O progresso antigo é migrado para a nova ordem; nem o progresso local nem uma preferência anterior de adiar o plano dispensam o perfil obrigatório. A etapa atual e a preferência ficam em `localStorage`, separadas por usuário; os dados financeiros confirmados ficam na API. Rascunhos não são persistidos entre sessões. Adiar o plano é uma preferência local deste navegador; outro dispositivo retoma a configuração.
+
+Na primeira etapa, `POST /api/v1/onboarding/complete` recebe o perfil financeiro e confirma seu salvamento. Edições posteriores usam `PUT /api/v1/profile`. A geração do plano continua independente, via `POST /api/v1/plans`; uma falha permite tentar novamente ou adiar o plano. Esses endpoints de onboarding precisam estar presentes na versão publicada do backend.
+
+### Gastos sem preencher o mesmo cadastro duas vezes
+
+O perfil tem três partes: renda e limites, gastos do mês, e reserva/preferências. Na segunda parte, os formulários existentes salvam dívidas e compromissos diretamente nas respectivas APIs. As etapas seguintes consultam os mesmos registros para revisão; não criam cópias nem usam estimativas fictícias.
+
+**Gasto mensal previsto = parcelas das dívidas ativas + compromissos do mês + lazer/outros gastos variáveis.** O cálculo soma centavos, usa somente a moeda do perfil e inclui compromissos pagos ou pendentes do mês de referência. Exclui dívidas quitadas/renegociadas, compromissos cancelados, outros meses e outras moedas. O saldo devedor total não entra nessa soma.
+
+A **base mensal da reserva** tem outra função: multiplicada pelos meses de reserva, define a meta de proteção. No primeiro preenchimento, parte das parcelas e compromissos cadastrados e pode ser ajustada; não é adicionada de novo ao gasto mensal. Perfis existentes preservam sua base salva. O total mensal é recalculado a partir dos registros atuais, inclusive na revisão do plano.
+
+Limitação do cálculo atual do backend: o plano protege os compromissos com vencimento até a próxima renda e prioriza dívidas de alto custo, mas não desconta automaticamente todas as parcelas mensais das dívidas. Por isso, o orçamento mensal e o saldo livre do plano são conceitos separados; a revisão informa essa diferença quando há parcelas. Nenhuma mudança no algoritmo financeiro do backend foi feita nesta implementação.
 
 ## Funcionalidades e contratos
 
