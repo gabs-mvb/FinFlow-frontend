@@ -92,7 +92,7 @@ function PlanForm({
       profile?.essentialMonthlyExpenses.amount ?? "",
     ),
     variableMonthlyBudget: String(profile?.variableMonthlyBudget.amount ?? ""),
-    minimumCashBuffer: String(profile?.minimumCashBuffer.amount ?? ""),
+    minimumCashBuffer: String(profile?.minimumCashBuffer.amount ?? 0),
     emergencyTargetMonths: String(profile?.emergencyTargetMonths ?? 6),
     reserveContributionRate: String(
       Number(((profile?.reserveContributionRate ?? 0.1) * 100).toFixed(4)),
@@ -142,11 +142,6 @@ function PlanForm({
       key: "variableMonthlyBudget",
       title: "Lazer e outros gastos variáveis",
       hint: "Seu limite mensal para lazer, compras e despesas variáveis. Não inclua aqui parcelas ou contas que vai cadastrar nos gastos do mês.",
-    },
-    {
-      key: "minimumCashBuffer",
-      title: "Saldo mínimo em conta",
-      hint: "Uma margem que deve ficar disponível além do orçamento. Pode ser zero.",
     },
   ] as const;
   useEffect(() => {
@@ -632,6 +627,15 @@ function PlanForm({
             recomendações do plano.
           </p>
           <dl className="onboarding-review">
+            <div>
+              <dt>Saldo nas contas cadastradas ({draft.currency})</dt>
+              <dd>{formatMoney(
+                (onboarding.accounts.data ?? [])
+                  .filter((account) => account.availableBalance.currency === draft.currency)
+                  .reduce((sum, account) => sum + account.availableBalance.amount, 0),
+                draft.currency,
+              )}</dd>
+            </div>
             {fields.map((field) => (
               <div key={field.key}>
                 <dt>{field.title}</dt>
