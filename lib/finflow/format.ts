@@ -51,6 +51,10 @@ export function money(amount: number | string, currency = "BRL"): Money {
 }
 
 export const labels: Record<string, string> = {
+  AI: "Plano com IA",
+  MANUAL: "Plano editado por você",
+  RULE_BASED: "Plano por regras",
+  CUSTOM: "Orientação personalizada",
   CHECKING: "Conta corrente",
   SAVINGS: "Poupança",
   PAYMENT: "Conta de pagamento",

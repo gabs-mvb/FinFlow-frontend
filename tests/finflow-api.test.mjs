@@ -33,9 +33,14 @@ const session = await import(
   })
 );
 const { api, ApiError } = await import(await moduleUrl("lib/finflow/api.ts"));
+const planningUrl = await moduleUrl("lib/finflow/planning.ts", {
+  "./api": await moduleUrl("lib/finflow/api.ts"),
+});
+const { planningError } = await import(planningUrl);
 const onboarding = await import(
   await moduleUrl("lib/onboarding.ts", {
     "./finflow/api": await moduleUrl("lib/finflow/api.ts"),
+    "./finflow/planning": planningUrl,
   })
 );
 const { monthlyBudget } = await import(
@@ -85,6 +90,120 @@ function context(path) {
     }),
   };
 }
+
+test("plan generation allows the maximum AI timeout without slowing other request limits", async () => {
+  const originalTimer = globalThis.setTimeout;
+  const delays = [];
+  globalThis.setTimeout = (callback, delay, ...args) => {
+    delays.push(delay);
+    return originalTimer(callback, delay, ...args);
+  };
+  globalThis.fetch = async () => Response.json({});
+  try {
+    for (const path of ["/plans", "/plans/personalized"]) {
+      await server.fetchUpstream(path, token, { method: "POST" });
+      await api.post(path === "/plans" ? "/plans?asOf=2026-09-24" : path);
+    }
+    await server.fetchUpstream("/accounts", token);
+    await api.get("/accounts");
+    assert.deepEqual(delays, [195_000, 200_000, 195_000, 200_000, 50_000, 55_000]);
+  } finally {
+    globalThis.setTimeout = originalTimer;
+  }
+});
+
+test("personalized plan routes forward complete content, revision and JWT", async () => {
+  const id = "12345678-1234-1234-1234-123456789abc";
+  const content = {
+    asOf: "2026-09-24",
+    summary: "Minha proposta",
+    reserveContribution: 100,
+    actions: [],
+    allocations: [],
+    categoryBudgets: [],
+    warnings: [],
+  };
+  const cases = [
+    [
+      "POST",
+      "/plans/personalized",
+      { asOf: content.asOf, preferences: "Priorizar reserva" },
+    ],
+    ["GET", `/plans/${id}`, undefined],
+    ["GET", `/plans/${id}/revisions`, undefined],
+    ["PUT", `/plans/${id}/content`, { expectedRevision: 2, content }],
+  ];
+  for (const [method, path, body] of cases) {
+    globalThis.fetch = async (url, init) => {
+      assert.equal(new URL(url).pathname, `/api/v1${path}`);
+      assert.equal(init.headers.get("Authorization"), `Bearer ${token}`);
+      assert.equal(init.method, method);
+      assert.deepEqual(init.body ? JSON.parse(init.body) : undefined, body);
+      return Response.json({ id, revision: 3, content });
+    };
+    const response = await proxy[method](
+      request(path, method, body),
+      context(path),
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).revision, 3);
+  }
+});
+
+test("planning conflicts and AI failures are preserved without retry or fallback", async () => {
+  const id = "12345678-1234-1234-1234-123456789abc";
+  for (const [status, code] of [
+    [409, "PLAN_REVISION_CONFLICT"],
+    [409, "PLANNING_DATA_CHANGED"],
+    [503, "AI_UNAVAILABLE"],
+  ]) {
+    let calls = 0;
+    globalThis.fetch = async () => {
+      calls++;
+      return Response.json({ status, code, detail: "Falha" }, { status });
+    };
+    const response = await proxy.PUT(
+      request(`/plans/${id}/content`, "PUT", {
+        expectedRevision: 0,
+        content: {},
+      }),
+      context(`/plans/${id}/content`),
+    );
+    assert.equal(response.status, status);
+    assert.equal((await response.json()).code, code);
+    assert.equal(calls, 1);
+  }
+  assert.match(
+    planningError(new ApiError(409, { code: "PLAN_REVISION_CONFLICT" })),
+    /rascunho foi mantido/,
+  );
+  assert.match(
+    planningError(new ApiError(409, { code: "PLANNING_DATA_CHANGED" })),
+    /dados financeiros mudaram/,
+  );
+  assert.match(planningError(new ApiError(503, {})), /Nenhum plano parcial/);
+});
+
+test("onboarding sends preferences to personalized generation and never falls back on failure", async () => {
+  const generations = [];
+  globalThis.fetch = async (url, init) => {
+    if (url.endsWith("/accounts")) return Response.json([{ id: "account" }]);
+    if (url.endsWith("/onboarding")) return Response.json({ completed: true });
+    if (url.endsWith("/profile")) return Response.json({});
+    generations.push([url, JSON.parse(init.body)]);
+    return Response.json({ code: "PLANNING_DATA_CHANGED" }, { status: 409 });
+  };
+  await assert.rejects(
+    onboarding.createFirstPlan({}, "2026-09-24", "Priorizar reserva"),
+    /dados financeiros mudaram/,
+  );
+  assert.deepEqual(generations, [
+    [
+      "/api/finflow/plans/personalized",
+      { asOf: "2026-09-24", preferences: "Priorizar reserva" },
+    ],
+  ]);
+});
 
 test("monthly budget adds installments, commitments and variable spending once, in cents", () => {
   const amount = (value) => ({ amount: value, currency: "BRL" });

@@ -215,7 +215,14 @@ export async function fetchUpstream(
   const abort = () => controller.abort(init.signal?.reason);
   if (init.signal?.aborted) abort();
   init.signal?.addEventListener("abort", abort, { once: true });
-  const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  const generatingPlan =
+    namespace === "finance" &&
+    init.method === "POST" &&
+    (path === "/plans" || path === "/plans/personalized");
+  const timeout = setTimeout(
+    () => controller.abort(),
+    generatingPlan ? 195_000 : UPSTREAM_TIMEOUT_MS,
+  );
   try {
     const headers = new Headers(init.headers);
     headers.delete("X-API-Key");
