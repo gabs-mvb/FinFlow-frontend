@@ -45,23 +45,27 @@ function SessionGate({ children }: { children: ReactNode }) {
     (item) => item.href === pathname,
   );
   const authRoute = pathname === "/login" || pathname === "/cadastro";
-  const onboarding = useOnboarding(!!session?.authenticated && !authRoute);
   const onboardingRoute = pathname === "/onboarding";
+  const unknownRoute = !current && !authRoute && !onboardingRoute;
+  const onboarding = useOnboarding(
+    !!session?.authenticated && !authRoute && !unknownRoute,
+  );
 
   useEffect(() => {
-    if (session && !session.authenticated && !authRoute) {
+    if (session && !session.authenticated && !authRoute && !unknownRoute) {
       router.replace(
         pathname === "/"
           ? "/login"
           : `/login?next=${encodeURIComponent(pathname)}`,
       );
     }
-  }, [session, authRoute, pathname, router]);
+  }, [session, authRoute, unknownRoute, pathname, router]);
 
   useEffect(() => {
     if (
       session?.authenticated &&
       !authRoute &&
+      !unknownRoute &&
       !onboardingRoute &&
       !onboarding.loading &&
       !onboarding.error &&
@@ -72,6 +76,7 @@ function SessionGate({ children }: { children: ReactNode }) {
   }, [
     session,
     authRoute,
+    unknownRoute,
     onboardingRoute,
     onboarding.loading,
     onboarding.error,
@@ -97,7 +102,7 @@ function SessionGate({ children }: { children: ReactNode }) {
     }
   }
 
-  if (authRoute) return children;
+  if (authRoute || unknownRoute) return children;
   if (!session?.authenticated || (!onboardingRoute && onboarding.loading))
     return (
       <div className="initial-loading" role="status">

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { afterEach, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import ts from "typescript";
 
 // Load the actual TypeScript modules with the project's existing compiler.
@@ -58,10 +58,13 @@ const testSession = { token, user, expiresAt };
 const originalFetch = globalThis.fetch;
 const originalEnv = {
   FINFLOW_API_URL: process.env.FINFLOW_API_URL,
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   FINFLOW_API_KEY: process.env.FINFLOW_API_KEY,
   NODE_ENV: process.env.NODE_ENV,
 };
+
+beforeEach(() => {
+  process.env.FINFLOW_API_URL = "https://backend.example";
+});
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -867,22 +870,18 @@ test("backend redirects are rejected without forwarding credentials to another d
   assert.equal(calls, 1);
 });
 
-test("backend URL prefers private configuration, supports public configuration, and defaults to Render", () => {
+test("backend URL requires FINFLOW_API_URL and supports auth and finance paths", async () => {
   delete process.env.FINFLOW_API_URL;
-  delete process.env.NEXT_PUBLIC_API_URL;
-  assert.equal(
-    String(server.upstreamUrl("/accounts")),
-    "https://finflow-backend-rxf3.onrender.com/api/v1/accounts",
-  );
-  process.env.NEXT_PUBLIC_API_URL = "https://public.example";
+  assert.throws(() => server.upstreamUrl("/accounts"), /Missing FINFLOW_API_URL/);
+  assert.equal((await server.fetchUpstream("/accounts", token)).status, 503);
+  process.env.FINFLOW_API_URL = "https://finflow-api.duckdns.org";
   assert.equal(
     String(server.upstreamUrl("/login", "", "auth")),
-    "https://public.example/api/auth/login",
+    "https://finflow-api.duckdns.org/api/auth/login",
   );
-  process.env.FINFLOW_API_URL = "http://localhost:8080";
   assert.equal(
     String(server.upstreamUrl("/accounts")),
-    "http://localhost:8080/api/v1/accounts",
+    "https://finflow-api.duckdns.org/api/v1/accounts",
   );
 });
 

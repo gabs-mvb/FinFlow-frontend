@@ -26,7 +26,7 @@ export default async function Section({
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
+  if (!Object.hasOwn(pages, section)) notFound();
   const Page = pages[section];
-  if (!Page) notFound();
   return <Page />;
 }
