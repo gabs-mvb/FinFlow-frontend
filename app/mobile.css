@@ -1,0 +1,79 @@
+/* Shared with the Android palette. Mobile rules are the base for new controls. */
+:root {
+  --ink: #11211f;
+  --muted: #52675f;
+  --faint: #60776d;
+  --paper: #f7faf8;
+  --line: #dde7e1;
+  --navy: #185b4c;
+  --teal: #147a68;
+  --teal-light: #d7f4ea;
+}
+input:not([type="checkbox"]), select, textarea { font-size: 16px; color: #111; min-height: 48px; }
+.field > span { color: #111; }
+input::placeholder, textarea::placeholder { color: #717c76; opacity: 1; }
+.button { min-height: 48px; }
+.main-content, .panel, .form-grid > *, .page-heading > *, .plan-section, .stat { min-width: 0; }
+.main-content, .modal { overflow-wrap: anywhere; }
+.mobile-bottom-nav { position: fixed; z-index: 28; inset: auto 0 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px max(6px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)); background: #fffffffa; border-top: 1px solid var(--line); }
+.mobile-bottom-nav a, .mobile-bottom-nav button { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 56px; gap: 3px; padding: 4px 0; border: 0; background: transparent; border-radius: 12px; color: var(--muted); text-decoration: none; font-size: 10px; font-weight: 650; }
+.mobile-bottom-nav .bi { font-size: 20px; line-height: 1.2; }
+.mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav .active { color: #105f52; background: var(--teal-light); }
+.mobile-more-links { display: grid; gap: 4px; margin-bottom: 20px; }
+.mobile-more-links a { display: flex; align-items: center; gap: 16px; padding: 12px; min-height: 52px; text-decoration: none; color: var(--ink); border-radius: 10px; }
+.mobile-more-links a > .bi:last-child { margin-left: auto; font-size: 12px; }
+.mobile-more-links [aria-current="page"] { background: var(--teal-light); color: #105f52; font-weight: 700; }
+@media (min-width: 721px) { .mobile-bottom-nav { display: none; } }
+@media (max-width: 720px) {
+  .sidebar { display: none; }
+  .main-shell { margin-left: 0; padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+  .topbar { padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left)); min-height: 64px; height: auto; gap: 10px; }
+  .topbar .mobile-menu { display: none !important; }
+  .topbar-end { gap: 8px; }
+  .breadcrumb { gap: 8px; font-size: 12px; }
+  .main-content { padding: 24px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left)); }
+  .page-heading { align-items: stretch; gap: 18px; }
+  .page-heading h1 { font-size: 28px; }
+  .heading-actions { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; }
+  .heading-actions > * { flex: 1 1 auto; font-size: 13px; }
+  .panel-head, .toolbar { flex-wrap: wrap; gap: 12px; }
+  .toolbar > * { min-width: 0; }
+  .toolbar input, .toolbar select { max-width: 100%; }
+  .table-wrap { overflow: visible; }
+  .data-table { display: block; width: 100%; min-width: 0; }
+  .data-table thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .data-table tbody { display: grid; gap: 12px; padding: 12px; }
+  .data-table tbody tr { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--surface); }
+  .data-table tbody td { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; width: 100%; padding: 10px 0; border: 0; text-align: left; white-space: normal; font-size: 13px; }
+  .data-table tbody td::before { content: attr(data-label); color: var(--muted); font-size: 12px; }
+  .data-table tbody td:first-child { padding-top: 2px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .data-table tbody td:first-child::before { display: none; }
+  .data-table .entity-cell { min-width: 0; }
+  .data-table .entity-cell > div { min-width: 0; overflow-wrap: anywhere; }
+  .data-table td .button { min-height: 48px; padding-inline: 14px; }
+  .row-actions { flex-wrap: wrap; }
+  .modal { width: 100%; max-width: none; max-height: 100dvh; height: 100dvh; margin: 0; border-radius: 0; border: 0; padding: 0; overscroll-behavior: contain; }
+  .modal-content { min-height: 100%; padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); }
+  .modal-heading { align-items: flex-start; gap: 8px; }
+  .modal-heading .button { flex-shrink: 0; min-width: 48px; }
+  .modal .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .form-actions { flex-wrap: wrap; gap: 10px; }
+  .form-actions > .button { flex: 1 1 120px; }
+  .form-fields > .row { flex-wrap: wrap; }
+  .plan-editor, .plan-editor-section, .plan-editor-item { min-width: 0; }
+  .plan-review-actions, .plan-editor .row { flex-wrap: wrap; }
+  .plan-review-actions > .button { flex: 1 1 auto; white-space: normal; }
+  .plan-editor .row > .field { flex: 1 1 100%; }
+  .plan-editor .panel { padding: 16px; }
+  .balance-main { padding: 26px 22px; }
+  .balance-value { font-size: clamp(28px, 9vw, 42px); overflow-wrap: anywhere; }
+  .upcoming-item, .account-mini { gap: 10px; }
+  .upcoming-item > div, .account-mini > div { min-width: 0; overflow-wrap: anywhere; }
+  .upcoming-item > .numeric, .account-mini > strong { font-size: 12px; white-space: normal; text-align: right; }
+  .app-footer { flex-wrap: wrap; gap: 8px; padding-inline: 16px; }
+  .auth-layout { min-height: 100dvh; }
+  .onboarding-navigation { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin, .loading-line { animation: none !important; }
+}

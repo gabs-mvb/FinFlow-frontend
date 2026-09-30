@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { afterEach, test } from "node:test";
+import { afterEach, beforeEach, test } from "node:test";
 import ts from "typescript";
 
 // Load the actual TypeScript modules with the project's existing compiler.
@@ -58,10 +58,13 @@ const testSession = { token, user, expiresAt };
 const originalFetch = globalThis.fetch;
 const originalEnv = {
   FINFLOW_API_URL: process.env.FINFLOW_API_URL,
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   FINFLOW_API_KEY: process.env.FINFLOW_API_KEY,
   NODE_ENV: process.env.NODE_ENV,
 };
+
+beforeEach(() => {
+  process.env.FINFLOW_API_URL = "https://backend.example";
+});
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
@@ -257,6 +260,20 @@ test("budget excludes inactive debts, cancelled commitments, other months and cu
   assert.equal(monthlyBudget([], [], "BRL", "2026-09", 0).total, 0);
 });
 
+test("monthly recurring commitment appears in later months after its next unpaid due date", () => {
+  const rent = {
+    status: "PENDING",
+    recurring: true,
+    dueDay: 31,
+    dueDate: "2027-01-31",
+    amount: { amount: 1200, currency: "BRL" },
+  };
+  assert.equal(monthlyBudget([], [rent], "BRL", "2027-01", 0).commitments, 1200);
+  assert.equal(monthlyBudget([], [rent], "BRL", "2027-02", 0).commitments, 1200);
+  assert.equal(monthlyBudget([], [rent], "BRL", "2026-12", 0).commitments, 0);
+  assert.equal(monthlyBudget([], [{ ...rent, status: "CANCELLED" }], "BRL", "2027-02", 0).commitments, 0);
+});
+
 test("onboarding proxy allows only status GET and completion POST and forwards the profile", async () => {
   process.env.FINFLOW_API_URL = "http://backend.internal:8080";
   const calls = [];
@@ -320,21 +337,21 @@ test("onboarding proxy allows only status GET and completion POST and forwards t
 });
 
 test("profile comes first and persisted progress cannot skip either mandatory step", () => {
-  assert.equal(onboarding.resumeStep("6", true, false), 0);
-  assert.equal(onboarding.resumeStep("6", false, false), 0);
-  assert.equal(onboarding.resumeStep("6", false, true), 1);
+  assert.equal(onboarding.resumeStep("4", true, false), 0);
+  assert.equal(onboarding.resumeStep("4", false, false), 0);
+  assert.equal(onboarding.resumeStep("4", false, true), 1);
   assert.equal(onboarding.resumeStep(null, true, true), 2);
   assert.equal(onboarding.resumeStep("3", true, true), 3);
   assert.equal(onboarding.resumeStep("900", true, true), 2);
   assert.equal(onboarding.resumeStep("NaN", true, true), 2);
   assert.equal(onboarding.resumeStep("0", true, true), 0);
-  assert.equal(onboarding.resumeStep("6", true, true), 6);
+  assert.equal(onboarding.resumeStep("4", true, true), 4);
 });
 
 test("old progress maps to the reordered steps without losing saved records", () => {
   assert.deepEqual(
     ["0", "1", "2", "3", "4", "5", "6"].map(onboarding.migrateOnboardingStep),
-    ["1", "2", "3", "4", "5", "0", "6"],
+    ["1", "1", "1", "2", "3", "0", "4"],
   );
   assert.equal(onboarding.migrateOnboardingStep(null), null);
   assert.equal(onboarding.migrateOnboardingStep("900"), null);
@@ -867,22 +884,18 @@ test("backend redirects are rejected without forwarding credentials to another d
   assert.equal(calls, 1);
 });
 
-test("backend URL prefers private configuration, supports public configuration, and defaults to Render", () => {
+test("backend URL requires FINFLOW_API_URL and supports auth and finance paths", async () => {
   delete process.env.FINFLOW_API_URL;
-  delete process.env.NEXT_PUBLIC_API_URL;
-  assert.equal(
-    String(server.upstreamUrl("/accounts")),
-    "https://finflow-backend-rxf3.onrender.com/api/v1/accounts",
-  );
-  process.env.NEXT_PUBLIC_API_URL = "https://public.example";
+  assert.throws(() => server.upstreamUrl("/accounts"), /Missing FINFLOW_API_URL/);
+  assert.equal((await server.fetchUpstream("/accounts", token)).status, 503);
+  process.env.FINFLOW_API_URL = "https://finflow-api.duckdns.org";
   assert.equal(
     String(server.upstreamUrl("/login", "", "auth")),
-    "https://public.example/api/auth/login",
+    "https://finflow-api.duckdns.org/api/auth/login",
   );
-  process.env.FINFLOW_API_URL = "http://localhost:8080";
   assert.equal(
     String(server.upstreamUrl("/accounts")),
-    "http://localhost:8080/api/v1/accounts",
+    "https://finflow-api.duckdns.org/api/v1/accounts",
   );
 });
 

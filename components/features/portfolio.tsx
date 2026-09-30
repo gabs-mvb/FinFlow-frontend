@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import {
   Alert,
   Button,
+  CurrencyAmountInput,
   EmptyState,
   Field,
   Icon,
@@ -11,6 +12,7 @@ import {
   PageHeading,
   ResourceState,
   Stat,
+  parseCurrencyAmount,
 } from "@/components/ui";
 import { invalidateResources, useResource } from "@/hooks/use-resource";
 import { api } from "@/lib/finflow/api";
@@ -139,27 +141,27 @@ export function PortfolioPage({
                   />
                 ) : (
                   <div className="table-wrap">
-                    <table className="data-table">
+                    <table className="data-table" role="table">
                       <thead>
-                        <tr>
-                          <th scope="col">Ativo</th>
-                          <th scope="col">Classe</th>
-                          <th scope="col">Valor atual</th>
-                          <th scope="col">Na carteira</th>
+                        <tr role="row">
+                          <th role="columnheader" scope="col">Ativo</th>
+                          <th role="columnheader" scope="col">Classe</th>
+                          <th role="columnheader" scope="col">Valor atual</th>
+                          <th role="columnheader" scope="col">Na carteira</th>
                         </tr>
                       </thead>
                       <tbody>
                         {portfolio.positions.map((position) => (
-                          <tr key={position.assetCode}>
-                            <td>
+                          <tr role="row" key={position.assetCode}>
+                            <td role="cell" data-label="Ativo">
                               <strong>{position.assetCode}</strong>
                               <small className="muted">
                                 {position.assetName}
                               </small>
                             </td>
-                            <td>{label(position.assetClass)}</td>
-                            <td>{formatMoney(position.currentValue)}</td>
-                            <td>
+                            <td role="cell" data-label="Classe">{label(position.assetClass)}</td>
+                            <td role="cell" data-label="Valor atual">{formatMoney(position.currentValue)}</td>
+                            <td role="cell" data-label="Na carteira">
                               {total > 0
                                 ? formatPercent(
                                     (position.currentValue.amount / total) *
@@ -251,7 +253,7 @@ function PortfolioEditor({
         assetName: position.assetName.trim(),
         assetClass: position.assetClass,
         currentValue: {
-          amount: position.amount,
+          amount: parseCurrencyAmount(position.amount),
           currency: currency.trim().toUpperCase(),
         },
       })),
@@ -381,17 +383,15 @@ function PortfolioEditor({
                     </select>
                   </Field>
                   <Field label="Valor atual">
-                    <input
+                    <CurrencyAmountInput
                       aria-label={`Valor atual do ativo ${index + 1}`}
-                      type="number"
-                      inputMode="decimal"
+                      currency={currency}
                       required
                       min="0"
-                      step="0.01"
                       value={position.amount}
-                      onChange={(event) =>
+                      onValueChange={(value) =>
                         updatePosition(position.key, {
-                          amount: event.target.value,
+                          amount: value,
                         })
                       }
                     />
@@ -465,24 +465,24 @@ function PortfolioEditor({
               </p>
             )}
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table" role="table">
                 <caption>Posições a salvar</caption>
                 <thead>
-                  <tr>
-                    <th scope="col">Ativo</th>
-                    <th scope="col">Classe</th>
-                    <th scope="col">Valor</th>
+                  <tr role="row">
+                    <th role="columnheader" scope="col">Ativo</th>
+                    <th role="columnheader" scope="col">Classe</th>
+                    <th role="columnheader" scope="col">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
                   {review.positions.map((position) => (
-                    <tr key={position.assetCode}>
-                      <td>
+                    <tr role="row" key={position.assetCode}>
+                      <td role="cell" data-label="Ativo">
                         {position.assetCode}
                         <small className="muted">{position.assetName}</small>
                       </td>
-                      <td>{label(position.assetClass)}</td>
-                      <td>
+                      <td role="cell" data-label="Classe">{label(position.assetClass)}</td>
+                      <td role="cell" data-label="Valor">
                         {formatMoney(
                           Number(position.currentValue.amount),
                           currency,

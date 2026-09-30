@@ -23,6 +23,7 @@ const routes: { pattern: RegExp; methods: string[]; query?: string[] }[] = [
   },
   { pattern: /^\/transactions\/imports$/, methods: ["POST"] },
   { pattern: /^\/(obligations|debts|goals)$/, methods: ["GET", "POST"] },
+  { pattern: new RegExp(`^/obligations/${uuid}$`), methods: ["PUT"] },
   {
     pattern: new RegExp(`^/(obligations|debts)/${uuid}/paid$`),
     methods: ["PATCH"],

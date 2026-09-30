@@ -16,7 +16,7 @@ export function PlanPreferences({
   return (
     <Field
       label="Preferências para a IA (opcional)"
-      hint="Ao preencher, você solicita uma análise com IA. Este texto será enviado à OpenAI; evite nomes, documentos e outros identificadores pessoais. Até 2.000 caracteres."
+      hint="Informe apenas prioridades e restrições financeiras. Pedidos de outros assuntos serão ignorados. Este texto será enviado à OpenAI; evite dados pessoais. Até 2.000 caracteres."
     >
       <textarea
         value={value}
@@ -39,6 +39,9 @@ export function PlanDetailsView({
 }) {
   const summary = plan.content?.summary || plan.details?.summary;
   const analysis = plan.content?.analysis || plan.details?.analysis;
+  const analysisLines = analysis?.split(/\r?\n/).filter((line) => line.trim());
+  const hasBulletAnalysis = analysisLines?.length &&
+    analysisLines.every((line) => line.startsWith("- "));
   const categories =
     plan.content?.categoryBudgets ?? plan.details?.categoryBudgets ?? [];
   return (
@@ -57,7 +60,15 @@ export function PlanDetailsView({
           {analysis && (
             <div>
               <h3>Por que este plano</h3>
-              <p style={{ whiteSpace: "pre-wrap" }}>{analysis}</p>
+              {hasBulletAnalysis ? (
+                <ul>
+                  {analysisLines?.map((line, index) => (
+                    <li key={index}>{line.slice(2)}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p style={{ whiteSpace: "pre-wrap" }}>{analysis}</p>
+              )}
             </div>
           )}
           {categories.length > 0 && (

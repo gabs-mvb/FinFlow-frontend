@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Alert, Button, EmptyState, Field, Icon, Stat } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  CurrencyAmountInput,
+  EmptyState,
+  Field,
+  Icon,
+  parseCurrencyAmount,
+  Stat,
+} from "@/components/ui";
 import { invalidateResources } from "@/hooks/use-resource";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { api, ApiError } from "@/lib/finflow/api";
@@ -111,7 +120,7 @@ function PlanForm({
   const budget = useMonthlyBudget(
     draft.currency,
     asOf,
-    Number(draft.variableMonthlyBudget),
+    parseCurrencyAmount(draft.variableMonthlyBudget),
   );
   const [result, setResult] = useState<FinancialPlan | undefined>(
     onboarding.completed ? onboarding.plan.data : undefined,
@@ -126,7 +135,7 @@ function PlanForm({
       | "essentialMonthlyExpenses"
       | "variableMonthlyBudget"
       | "minimumCashBuffer",
-  ) => ({ amount: Number(draft[key]), currency: draft.currency });
+  ) => ({ amount: parseCurrencyAmount(draft[key]), currency: draft.currency });
   const fields = [
     {
       key: "monthlyIncome",
@@ -444,7 +453,7 @@ function PlanForm({
               type="number"
               required
               min="1"
-              max="28"
+              max="31"
               step="1"
               value={draft.payDay}
               onChange={(e) => setDraft({ ...draft, payDay: e.target.value })}
@@ -458,16 +467,14 @@ function PlanForm({
                 label={`${field.title} (${draft.currency})`}
                 hint={field.hint}
               >
-                <input
+                <CurrencyAmountInput
                   required
-                  type="number"
+                  currency={draft.currency}
                   min="0"
-                  step="0.01"
-                  inputMode="decimal"
                   value={draft[field.key]}
                   placeholder="0,00"
-                  onChange={(e) =>
-                    setDraft({ ...draft, [field.key]: e.target.value })
+                  onValueChange={(value) =>
+                    setDraft({ ...draft, [field.key]: value })
                   }
                 />
               </Field>
@@ -484,15 +491,13 @@ function PlanForm({
             label={`Base mensal da reserva (${draft.currency})`}
             hint="Estimativa dos gastos indispensáveis que você quer proteger. Partimos das parcelas e compromissos cadastrados; ajuste para incluir outras necessidades. Não é um gasto extra."
           >
-            <input
+            <CurrencyAmountInput
               required
-              type="number"
+              currency={draft.currency}
               min="0"
-              step="0.01"
-              inputMode="decimal"
               value={draft.essentialMonthlyExpenses}
-              onChange={(e) =>
-                setDraft({ ...draft, essentialMonthlyExpenses: e.target.value })
+              onValueChange={(value) =>
+                setDraft({ ...draft, essentialMonthlyExpenses: value })
               }
             />
           </Field>
@@ -537,7 +542,7 @@ function PlanForm({
             <span>Meta de reserva</span>
             <strong>
               {formatMoney(
-                Number(draft.essentialMonthlyExpenses) *
+                parseCurrencyAmount(draft.essentialMonthlyExpenses) *
                   Number(draft.emergencyTargetMonths),
                 draft.currency,
               )}
@@ -639,7 +644,7 @@ function PlanForm({
             {fields.map((field) => (
               <div key={field.key}>
                 <dt>{field.title}</dt>
-                <dd>{formatMoney(Number(draft[field.key]), draft.currency)}</dd>
+                <dd>{formatMoney(parseCurrencyAmount(draft[field.key]), draft.currency)}</dd>
               </div>
             ))}
             <div>
@@ -651,7 +656,7 @@ function PlanForm({
               <dd>
                 {draft.emergencyTargetMonths} meses ·{" "}
                 {formatMoney(
-                  Number(draft.essentialMonthlyExpenses) *
+                  parseCurrencyAmount(draft.essentialMonthlyExpenses) *
                     Number(draft.emergencyTargetMonths),
                   draft.currency,
                 )}

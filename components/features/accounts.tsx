@@ -9,6 +9,7 @@ import { accountTypes, purposes, labelFor } from "@/lib/labels";
 import {
   Alert,
   Button,
+  CurrencyAmountInput,
   CurrencyField,
   EmptyState,
   Field,
@@ -18,6 +19,7 @@ import {
   ResourceState,
   SubmitForm,
   moneyInput,
+  parseCurrencyAmount,
   textInput,
 } from "@/components/ui";
 
@@ -27,6 +29,7 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
   const [purpose, setPurpose] = useState("");
   const [editing, setEditing] = useState<FinancialAccount | "new" | null>(null);
   const [message, setMessage] = useState("");
+  const [newCurrency, setNewCurrency] = useState("BRL");
   const accounts = resource.data ?? [];
   const filtered = accounts.filter(
     (account) =>
@@ -129,22 +132,22 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
         <ResourceState resource={resource}>
           {filtered.length ? (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table" role="table">
                 <thead>
-                  <tr>
-                    <th>Conta</th>
-                    <th>Finalidade</th>
-                    <th>Última atualização</th>
-                    <th className="numeric">Saldo disponível</th>
-                    <th>
+                  <tr role="row">
+                    <th role="columnheader">Conta</th>
+                    <th role="columnheader">Finalidade</th>
+                    <th role="columnheader">Última atualização</th>
+                    <th role="columnheader" className="numeric">Saldo disponível</th>
+                    <th role="columnheader">
                       <span className="sr-only">Ações</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((account) => (
-                    <tr key={account.id}>
-                      <td>
+                    <tr role="row" key={account.id}>
+                      <td role="cell" data-label="Conta">
                         <div className="identity">
                           <span className="entity-icon">
                             <Icon
@@ -164,20 +167,20 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td role="cell" data-label="Finalidade">
                         <span className="badge">
                           {labelFor(purposes, account.purpose)}
                         </span>
                       </td>
-                      <td className="muted">
+                      <td role="cell" data-label="Última atualização" className="muted">
                         {account.lastSyncedAt
                           ? calendarDate(account.lastSyncedAt)
                           : "Não informada"}
                       </td>
-                      <td className="numeric">
+                      <td role="cell" data-label="Saldo disponível" className="numeric">
                         <strong>{currency(account.availableBalance)}</strong>
                       </td>
-                      <td>
+                      <td role="cell" data-label="Ações">
                         <Button
                           variant="ghost"
                           aria-label={`Atualizar saldo de ${account.name}`}
@@ -274,16 +277,15 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
                 </select>
               </Field>
               <Field label="Saldo disponível">
-                <input
+                <CurrencyAmountInput
                   name="amount"
-                  type="number"
+                  currency={newCurrency}
                   required
                   min="0"
-                  step="0.01"
                   placeholder="0,00"
                 />
               </Field>
-              <CurrencyField />
+              <CurrencyField value={newCurrency} onChange={setNewCurrency} />
             </div>
             <details>
               <summary>Identificador de importação (opcional)</summary>
@@ -309,7 +311,7 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
             onSubmit={async (data) => {
               await api.patch(`/accounts/${editing.id}/balance`, {
                 availableBalance: {
-                  amount: Number(data.get("amount")),
+                  amount: parseCurrencyAmount(data.get("amount")),
                   currency: editing.availableBalance.currency,
                 },
                 syncedAt: new Date().toISOString(),
@@ -318,12 +320,11 @@ export function AccountsPage({ onboarding = false }: { onboarding?: boolean }) {
             }}
           >
             <Field label={`Saldo atual (${editing.availableBalance.currency})`}>
-              <input
+              <CurrencyAmountInput
                 required
                 name="amount"
-                type="number"
+                currency={editing.availableBalance.currency}
                 min="0"
-                step="0.01"
                 defaultValue={editing.availableBalance.amount}
               />
             </Field>

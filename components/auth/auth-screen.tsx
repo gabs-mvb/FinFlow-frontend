@@ -24,7 +24,7 @@ export function AuthScreen({ mode }: { mode: "login" | "register" }) {
   const submitting = useRef(false);
   const registering = mode === "register";
   const next = safeReturnPath(params.get("next"));
-  const nextQuery = next === "/" ? "" : `?next=${encodeURIComponent(next)}`;
+  const nextQuery = next === "/painel" ? "" : `?next=${encodeURIComponent(next)}`;
 
   useEffect(() => {
     if (session?.authenticated) router.replace(next);
@@ -95,9 +95,9 @@ export function AuthScreen({ mode }: { mode: "login" | "register" }) {
     <main className="auth-page">
       <section className="auth-story" aria-label="FinFlow">
         <Link
-          href="/login"
+          href="/"
           className="brand auth-brand"
-          aria-label="FinFlow — entrar"
+          aria-label="FinFlow — início"
         >
           <span className="brand-mark" aria-hidden="true">
             <span />

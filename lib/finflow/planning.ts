@@ -7,7 +7,7 @@ export function planningError(cause: unknown): string {
     if (cause.code === "PLANNING_DATA_CHANGED")
       return "Seus dados financeiros mudaram durante a análise. Revise os dados e solicite um novo plano.";
     if (cause.status === 503)
-      return "A análise com IA está indisponível ou não pôde ser concluída. Nenhum plano parcial foi salvo. Tente novamente mais tarde.";
+      return `${cause.message} Nenhum plano parcial foi salvo.`;
     if (cause.status === 504)
       return "O tempo de espera terminou. Consulte o plano mais recente antes de tentar gerar novamente.";
     const fields = Object.values(cause.fieldErrors);

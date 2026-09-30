@@ -4,6 +4,17 @@ Interface em português para o [FinFlow Backend](../FinFlow-backend), com contas
 
 O projeto usa React, TypeScript e Next.js App Router. O navegador acessa um proxy na mesma origem; a URL do backend e a comunicação com `Authorization: Bearer` ficam no servidor do frontend.
 
+## Site público e experiência mobile
+
+- `/` é a landing page pública, sem consulta de sessão ou dados financeiros. Os valores da apresentação são explicitamente ilustrativos.
+- `/painel` é o início autenticado. Login sem destino e links antigos com `next=/` seguem para o painel. Perfil e conta permitem entrar mesmo antes de gerar o primeiro plano, inclusive após configuração no Android.
+- No celular, a navegação inferior oferece Início, Transações, Plano, Relatórios e Mais. Mais abre uma janela com todas as áreas, fechamento por Escape, foco contido e restauração da rolagem.
+- Tabelas viram cartões identificados, formulários usam texto de 16px e controles de pelo menos 48px, e os modais ocupam a tela. As áreas seguras do aparelho e a preferência por movimento reduzido são respeitadas. A navegação lateral e tabelas permanecem no desktop.
+
+### Verificação visual opcional
+
+Com uma prévia Next em `127.0.0.1:3001` e Playwright/Chromium disponíveis, execute `node tests/mobile-smoke.mjs`. É possível indicar o módulo instalado em `PLAYWRIGHT_MODULE` e o diretório de capturas em `SMOKE_OUTPUT`. O teste intercepta todas as chamadas financeiras com dados fictícios, rejeita mutações e verifica as telas em 320, 360, 390, 768 e 1440px, incluindo o primeiro acesso sem plano, o editor completo, os formulários e o menu mobile. Não usa a conta do usuário nem valida a integração bancária em produção.
+
 ## Rodar localmente
 
 Pré-requisitos: Node.js **22.13 ou superior**, npm, Java **17 ou superior** e PostgreSQL. O repositório do backend inclui um Compose para PostgreSQL 17.
@@ -38,18 +49,20 @@ npm run dev -- --host 127.0.0.1 --port 3000
 Configure `.env.local`:
 
 ```dotenv
-FINFLOW_API_URL=https://finflow-backend-rxf3.onrender.com
+FINFLOW_API_URL=https://finflow-api.duckdns.org
 ```
 
-A variável aceita a origem do backend ou uma base terminada em `/api/v1`. O frontend usa `FINFLOW_API_URL`, aceita `NEXT_PUBLIC_API_URL` por compatibilidade e, sem ambas, usa `https://finflow-backend-rxf3.onrender.com`. Reinicie o servidor do frontend após alterar o ambiente. Abra `http://127.0.0.1:3000/login` e entre com e-mail e senha; o cadastro fica em `/cadastro`.
+A variável aceita a origem do backend ou uma base terminada em `/api/v1`. O frontend usa exclusivamente `FINFLOW_API_URL`, que deve estar configurada no ambiente. Reinicie o servidor do frontend após alterar o ambiente. Abra `http://127.0.0.1:3000/login` e entre com e-mail e senha; o cadastro fica em `/cadastro`.
 
-O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend. Prefira `FINFLOW_API_URL`; `NEXT_PUBLIC_API_URL` é aceito apenas por compatibilidade e não é necessário para o proxy.
+O frontend chama o backend pelo servidor, então o navegador não depende do CORS do backend.
 
-O proxy tolera até 50 segundos de espera pelo backend. Esse intervalo acomoda a primeira resposta após o serviço do Render ficar inativo; as chamadas seguintes normalmente são mais rápidas.
+O proxy tolera até 50 segundos de espera pelo backend hospedado na AWS EC2.
 
 ### Vercel
 
-O projeto usa o build nativo do Next.js. O `vercel.json` fixa o preset `nextjs`, executa `npm ci` na instalação e `npm run build` no build, inclusive quando o painel da Vercel contém comandos antigos. O backend padrão é `https://finflow-backend-rxf3.onrender.com`; ainda é possível sobrescrevê-lo com `FINFLOW_API_URL`. Selecione Node.js 22 na Vercel.
+O projeto usa o build nativo do Next.js. O `vercel.json` fixa o preset `nextjs`, executa `npm ci` na instalação e `npm run build` no build, inclusive quando o painel da Vercel contém comandos antigos. Configure `FINFLOW_API_URL=https://finflow-api.duckdns.org` nas variáveis de ambiente da Vercel antes do build. Selecione Node.js 22 na Vercel.
+
+O arquivo `.env.local` não é enviado ao Git nem à Vercel. Para migrar um frontend já publicado, atualize `FINFLOW_API_URL` nos ambientes Production e Preview do projeto e faça um novo deploy. O servidor usa `FINFLOW_API_URL`; alterar apenas `NEXT_PUBLIC_API_URL` não muda o destino do proxy. Confira também possíveis sobrescritas por branch no ambiente Preview.
 
 ## Acesso e sessão
 
@@ -100,8 +113,8 @@ Limitação do cálculo atual do backend: o plano protege os compromissos com ve
 | Compromissos | Cadastrar, listar, identificar vencidos e registrar pagamento                     |
 | Dívidas      | Cadastrar, listar, acompanhar taxa/parcela/prioridade e registrar quitação        |
 | Metas        | Criar e atualizar o total acumulado até o valor-alvo                              |
-| Carteira     | Consultar e substituir posições/metas, com revisão antes de salvar                |
-| Plano        | Gerar por data, consultar o último cálculo e aprovar/recusar intenções            |
+| Carteira     | Consultar e substituir posições, com revisão antes de salvar                     |
+| Plano        | Gerar por data/preferências, editar conteúdo, consultar revisões e aprovar/recusar intenções |
 | Relatórios   | Consultar receitas, despesas por categoria, aportes e prioridades mensais         |
 | Conexões     | Consultar o estado da integração e registrar/atualizar consentimentos locais      |
 | Perfil       | Consultar e configurar orçamento, reserva, risco e modo de acompanhamento         |

@@ -169,42 +169,42 @@ export function ConnectionsPage() {
               />
             ) : (
               <div className="table-wrap">
-                <table className="data-table">
+                <table className="data-table" role="table">
                   <caption className="sr-only">
                     Consentimentos, permissões e validade
                   </caption>
                   <thead>
-                    <tr>
-                      <th scope="col">Instituição</th>
-                      <th scope="col">Permissões</th>
-                      <th scope="col">Situação</th>
-                      <th scope="col">Validade</th>
-                      <th scope="col">
+                    <tr role="row">
+                      <th role="columnheader" scope="col">Instituição</th>
+                      <th role="columnheader" scope="col">Permissões</th>
+                      <th role="columnheader" scope="col">Situação</th>
+                      <th role="columnheader" scope="col">Validade</th>
+                      <th role="columnheader" scope="col">
                         <span className="sr-only">Ações</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {consents.data.map((consent) => (
-                      <tr key={consent.id}>
-                        <td>
+                      <tr role="row" key={consent.id}>
+                        <td role="cell" data-label="Instituição">
                           <strong>{consent.institution}</strong>
                           <small className="muted">{consent.provider}</small>
                         </td>
-                        <td>
+                        <td role="cell" data-label="Permissões">
                           {consent.scopes
                             .map((scope) => scopeLabels[scope])
                             .join(", ")}
                         </td>
-                        <td>
+                        <td role="cell" data-label="Situação">
                           <span
                             className={`badge ${effectiveStatus(consent) === "ACTIVE" ? "badge-success" : ""}`}
                           >
                             {statusLabels[effectiveStatus(consent)]}
                           </span>
                         </td>
-                        <td>{formatInstant(consent.expiresAt)}</td>
-                        <td>
+                        <td role="cell" data-label="Validade">{formatInstant(consent.expiresAt)}</td>
+                        <td role="cell" data-label="Ações">
                           <Button
                             variant="ghost"
                             aria-label={`Editar consentimento de ${consent.institution}`}

@@ -158,20 +158,20 @@ export function TransactionsPage() {
           {displayed.length ? (
             <>
               <div className="table-wrap">
-                <table className="data-table">
+                <table className="data-table" role="table">
                   <thead>
-                    <tr>
-                      <th>Descrição</th>
-                      <th>Categoria</th>
-                      <th>Conta</th>
-                      <th>Data</th>
-                      <th className="numeric">Valor</th>
+                    <tr role="row">
+                      <th role="columnheader">Descrição</th>
+                      <th role="columnheader">Categoria</th>
+                      <th role="columnheader">Conta</th>
+                      <th role="columnheader">Data</th>
+                      <th role="columnheader" className="numeric">Valor</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayed.map((item) => (
-                      <tr key={item.id}>
-                        <td>
+                      <tr role="row" key={item.id}>
+                        <td role="cell" data-label="Descrição">
                           <div className="identity">
                             <span
                               className={`transaction-icon ${item.type === "CREDIT" ? "income" : ""}`}
@@ -190,20 +190,20 @@ export function TransactionsPage() {
                             </div>
                           </div>
                         </td>
-                        <td>
+                        <td role="cell" data-label="Categoria">
                           <span className="badge">
                             {labelFor(categories, item.category)}
                           </span>
                         </td>
-                        <td>
+                        <td role="cell" data-label="Conta">
                           {accounts.data?.find(
                             (account) => account.id === item.accountId,
                           )?.name ?? "Conta"}
                         </td>
-                        <td className="muted">
+                        <td role="cell" data-label="Data" className="muted">
                           {calendarDate(item.occurredAt)}
                         </td>
-                        <td
+                        <td role="cell" data-label="Valor"
                           className={`numeric ${item.type === "CREDIT" ? "income" : ""}`}
                         >
                           <strong>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Alert, Button, Icon } from "./ui";
+import { Alert, Button, Icon, Modal } from "./ui";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import {
   SessionProvider,
@@ -11,7 +11,7 @@ import {
 } from "@/components/auth/session-provider";
 
 const navigation = [
-  { href: "/", label: "Visão geral", icon: "grid-1x2" },
+  { href: "/painel", label: "Início", icon: "house" },
   { href: "/contas", label: "Contas", icon: "wallet2" },
   { href: "/transacoes", label: "Transações", icon: "arrow-left-right" },
   { href: "/compromissos", label: "Compromissos", icon: "calendar2-check" },
@@ -27,6 +27,8 @@ const settings = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === "/") return children;
   return (
     <SessionProvider>
       <SessionGate>{children}</SessionGate>
@@ -45,23 +47,27 @@ function SessionGate({ children }: { children: ReactNode }) {
     (item) => item.href === pathname,
   );
   const authRoute = pathname === "/login" || pathname === "/cadastro";
-  const onboarding = useOnboarding(!!session?.authenticated && !authRoute);
   const onboardingRoute = pathname === "/onboarding";
+  const unknownRoute = !current && !authRoute && !onboardingRoute;
+  const onboarding = useOnboarding(
+    !!session?.authenticated && !authRoute && !unknownRoute,
+  );
 
   useEffect(() => {
-    if (session && !session.authenticated && !authRoute) {
+    if (session && !session.authenticated && !authRoute && !unknownRoute) {
       router.replace(
-        pathname === "/"
+        pathname === "/painel"
           ? "/login"
           : `/login?next=${encodeURIComponent(pathname)}`,
       );
     }
-  }, [session, authRoute, pathname, router]);
+  }, [session, authRoute, unknownRoute, pathname, router]);
 
   useEffect(() => {
     if (
       session?.authenticated &&
       !authRoute &&
+      !unknownRoute &&
       !onboardingRoute &&
       !onboarding.loading &&
       !onboarding.error &&
@@ -72,6 +78,7 @@ function SessionGate({ children }: { children: ReactNode }) {
   }, [
     session,
     authRoute,
+    unknownRoute,
     onboardingRoute,
     onboarding.loading,
     onboarding.error,
@@ -97,7 +104,7 @@ function SessionGate({ children }: { children: ReactNode }) {
     }
   }
 
-  if (authRoute) return children;
+  if (authRoute || unknownRoute) return children;
   if (!session?.authenticated || (!onboardingRoute && onboarding.loading))
     return (
       <div className="initial-loading" role="status">
@@ -133,15 +140,8 @@ function SessionGate({ children }: { children: ReactNode }) {
       <a className="skip-link" href="#main">
         Ir para o conteúdo
       </a>
-      {mobileOpen && (
-        <button
-          className="nav-scrim"
-          aria-label="Fechar navegação"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <aside className={`sidebar ${mobileOpen ? "is-open" : ""}`}>
-        <Link href="/" className="brand" onClick={() => setMobileOpen(false)}>
+      <aside className="sidebar">
+        <Link href="/painel" className="brand">
           <span className="brand-mark" aria-hidden="true">
             <span />
             <span />
@@ -251,10 +251,38 @@ function SessionGate({ children }: { children: ReactNode }) {
           {children}
         </main>
         <footer className="app-footer">
-          <span>FinFlow</span>
+          <Link href="/">FinFlow</Link>
           <span>Clareza para decidir. Controle para agir.</span>
         </footer>
       </div>
+      <nav className="mobile-bottom-nav" aria-label="Navegação no celular">
+        {[
+          { href: "/painel", label: "Início", icon: "house" },
+          { href: "/transacoes", label: "Transações", icon: "arrow-left-right" },
+          { href: "/plano", label: "Plano", icon: "signpost-split" },
+          { href: "/relatorios", label: "Relatórios", icon: "bar-chart-line" },
+        ].map((item) => (
+          <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined}>
+            <Icon name={item.icon} /><span>{item.label}</span>
+          </Link>
+        ))}
+        <button type="button" onClick={() => setMobileOpen(true)} aria-haspopup="dialog" aria-expanded={mobileOpen} className={!["/painel", "/transacoes", "/plano", "/relatorios"].includes(pathname) ? "active" : ""}>
+          <Icon name="three-dots" /><span>Mais</span>
+        </button>
+      </nav>
+      {mobileOpen && (
+        <Modal title="Seu espaço" description={session.user.name} onClose={() => setMobileOpen(false)}>
+          <nav className="mobile-more-links" aria-label="Todas as áreas">
+            {[...navigation, ...settings].map((item) => (
+              <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined} onClick={() => setMobileOpen(false)}>
+                <Icon name={item.icon} /><span>{item.label}</span><Icon name="chevron-right" />
+              </Link>
+            ))}
+          </nav>
+          {sessionError && <Alert tone="error">{sessionError}</Alert>}
+          <Button variant="secondary" disabled={signingOut} onClick={disconnect}>Sair da conta</Button>
+        </Modal>
+      )}
     </div>
   );
 }

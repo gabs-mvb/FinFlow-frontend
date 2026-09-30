@@ -9,6 +9,7 @@ import { statuses } from "@/lib/labels";
 import {
   Alert,
   Button,
+  CurrencyAmountInput,
   CurrencyField,
   EmptyState,
   Field,
@@ -18,6 +19,7 @@ import {
   ResourceState,
   SubmitForm,
   moneyInput,
+  parseCurrencyAmount,
   textInput,
 } from "@/components/ui";
 
@@ -25,6 +27,7 @@ export function GoalsPage({ onboarding = false }: { onboarding?: boolean }) {
   const resource = useResource<FinancialGoal[]>("/goals");
   const [editing, setEditing] = useState<FinancialGoal | "new" | null>(null);
   const [notice, setNotice] = useState("");
+  const [newCurrency, setNewCurrency] = useState("BRL");
   function saved(message: string) {
     setEditing(null);
     setNotice(message);
@@ -153,25 +156,23 @@ export function GoalsPage({ onboarding = false }: { onboarding?: boolean }) {
             </Field>
             <div className="form-grid">
               <Field label="Valor da meta">
-                <input
+                <CurrencyAmountInput
                   required
                   name="target"
-                  type="number"
+                  currency={newCurrency}
                   min="0.01"
-                  step="0.01"
                 />
               </Field>
               <Field label="Quanto já está guardado">
-                <input
+                <CurrencyAmountInput
                   required
                   name="current"
-                  type="number"
+                  currency={newCurrency}
                   min="0"
-                  step="0.01"
                   defaultValue="0"
                 />
               </Field>
-              <CurrencyField />
+              <CurrencyField value={newCurrency} onChange={setNewCurrency} />
               <Field label="Prazo (opcional)">
                 <input name="targetDate" type="date" />
               </Field>
@@ -200,7 +201,7 @@ export function GoalsPage({ onboarding = false }: { onboarding?: boolean }) {
             onSubmit={async (data) => {
               await api.patch(`/goals/${editing.id}/progress`, {
                 currentAmount: {
-                  amount: Number(data.get("amount")),
+                  amount: parseCurrencyAmount(data.get("amount")),
                   currency: editing.targetAmount.currency,
                 },
               });
@@ -211,13 +212,12 @@ export function GoalsPage({ onboarding = false }: { onboarding?: boolean }) {
               label={`Total já guardado (${editing.targetAmount.currency})`}
               hint="Informe o total acumulado, incluindo o que já havia guardado."
             >
-              <input
+              <CurrencyAmountInput
                 required
                 name="amount"
-                type="number"
+                currency={editing.targetAmount.currency}
                 min="0"
                 max={editing.targetAmount.amount}
-                step="0.01"
                 defaultValue={editing.currentAmount.amount}
               />
             </Field>

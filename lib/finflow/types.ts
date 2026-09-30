@@ -1,6 +1,7 @@
 export type Money = { amount: number; currency: string };
 export interface OnboardingStatus {
   completed: boolean;
+  readyForDashboard?: boolean;
 }
 export type MoneyInput = { amount: number | string; currency?: string };
 export type MoneyOutput = Money;
@@ -198,15 +199,20 @@ export interface CreateObligationRequest {
   name: string;
   type: ObligationType;
   amount: MoneyInput;
-  dueDate: string;
+  dueDate?: string;
+  recurring?: boolean;
+  dueDay?: number;
 }
 export interface MonthlyObligation extends Omit<
   CreateObligationRequest,
-  "amount"
+  "amount" | "dueDay" | "dueDate" | "recurring"
 > {
   id: string;
   amount: Money;
   status: ObligationStatus;
+  dueDate: string;
+  recurring: boolean;
+  dueDay: number | null;
 }
 
 export interface PortfolioPositionInput {

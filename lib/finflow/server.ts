@@ -4,7 +4,6 @@ import type { AuthUser } from "@/lib/auth/types";
 const COOKIE_NAME = "finflow_session";
 const SESSION_SECONDS = 24 * 60 * 60;
 const UPSTREAM_TIMEOUT_MS = 50_000;
-const DEFAULT_API_URL = "https://finflow-backend-rxf3.onrender.com";
 
 export interface StoredSession {
   token: string;
@@ -34,10 +33,8 @@ export function upstreamUrl(
   search = "",
   namespace: "finance" | "auth" = "finance",
 ): URL {
-  const configured =
-    process.env.FINFLOW_API_URL ??
-    process.env.NEXT_PUBLIC_API_URL ??
-    DEFAULT_API_URL;
+  const configured = process.env.FINFLOW_API_URL;
+  if (!configured) throw new Error("Missing FINFLOW_API_URL.");
   const base = new URL(configured);
   if (
     !["http:", "https:"].includes(base.protocol) ||

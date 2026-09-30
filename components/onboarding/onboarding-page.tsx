@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { useSession } from "@/components/auth/session-provider";
 import { useOnboarding } from "@/hooks/use-onboarding";
 import { AccountsPage } from "@/components/features/accounts";
-import { CommitmentsPage } from "@/components/features/commitments";
 import { GoalsPage } from "@/components/features/goals";
 import { PortfolioPage } from "@/components/features/portfolio";
 import { Alert, Button, Icon } from "@/components/ui";
-import { migrateOnboardingStep, resumeStep } from "@/lib/onboarding";
+import {
+  migrateOnboardingStep,
+  migrateOnboardingV2Step,
+  resumeStep,
+} from "@/lib/onboarding";
 import { deferPlan } from "@/lib/onboarding-progress";
 import { PlanSetup } from "./plan-setup";
 
@@ -18,7 +21,7 @@ const steps = [
     name: "Perfil financeiro",
     title: "Seu perfil financeiro, do seu jeito.",
     description:
-      "Comece pela sua renda, despesas, reserva e preferências. Salve seu perfil para liberar as próximas etapas e preparar a base do seu plano.",
+      "Comece pela sua renda, despesas, reserva e preferências. Elas são a base para o plano financeiro que vamos criar.",
     hint: "Perfil obrigatório",
   },
   {
@@ -27,20 +30,6 @@ const steps = [
     description:
       "Adicione suas contas e o saldo atual de cada uma. O saldo disponível será calculado a partir delas. Escolha Dia a dia para o dinheiro usado nas despesas do mês.",
     hint: "Conta obrigatória",
-  },
-  {
-    name: "Dívidas",
-    title: "O que você precisa quitar?",
-    description:
-      "Revise as dívidas que você cadastrou no perfil. Elas já estão salvas aqui. Adicione outras apenas se faltou alguma; não repita as parcelas nos compromissos.",
-    hint: "Opcional",
-  },
-  {
-    name: "Compromissos",
-    title: "Deixe os próximos vencimentos à vista.",
-    description:
-      "Os compromissos informados no perfil já estão aqui. Confira os vencimentos e adicione apenas o que faltou. Evite repetir parcelas que já cadastrou em Dívidas.",
-    hint: "Opcional",
   },
   {
     name: "Metas",
@@ -90,7 +79,7 @@ export function OnboardingPage() {
     <Journey
       key={session.user.id}
       userId={session.user.id}
-      initialStep={onboarding.completed ? 6 : undefined}
+      initialStep={onboarding.completed ? 4 : undefined}
     />
   );
 }
@@ -105,12 +94,15 @@ function Journey({
   const onboarding = useOnboarding();
   const { signOut } = useSession();
   const router = useRouter();
-  const storageKey = `finflow:onboarding:v2:${userId}`;
+  const storageKey = `finflow:onboarding:v3:${userId}`;
   const [step, setStep] = useState(() => {
     let saved: string | null = null;
     try {
       saved =
         localStorage.getItem(storageKey) ??
+        migrateOnboardingV2Step(
+          localStorage.getItem(`finflow:onboarding:v2:${userId}`),
+        ) ??
         migrateOnboardingStep(
           localStorage.getItem(`finflow:onboarding:v1:${userId}`),
         );
@@ -260,40 +252,31 @@ function Journey({
           )}
           <div className="onboarding-records">
             {step === 1 && <AccountsPage onboarding />}
-            {step === 2 && (
-              <CommitmentsPage key="debts" kind="debts" onboarding />
-            )}
+            {step === 2 && <GoalsPage onboarding />}
             {step === 3 && (
-              <CommitmentsPage
-                key="obligations"
-                kind="obligations"
-                onboarding
-              />
-            )}
-            {step === 4 && <GoalsPage onboarding />}
-            {step === 5 && (
               <PortfolioPage onboarding onEditingChange={setEditing} />
             )}
           </div>
-          <div hidden={step !== 0 && step !== 6}>
+          <div hidden={step !== 0 && step !== 4}>
             <PlanSetup
-              stage={step === 6 ? "plan" : "profile"}
+              stage={step === 4 ? "plan" : "profile"}
               onProfileSaved={() =>
-                openStep(furthest === 6 && hasAccount ? 6 : 1)
+                openStep(furthest === 4 && hasAccount ? 4 : 1)
               }
               onEditProfile={() => go(0)}
               onBusyChange={setEditing}
               onFinish={() => {
                 try {
                   localStorage.removeItem(storageKey);
+                  localStorage.removeItem(`finflow:onboarding:v2:${userId}`);
                   localStorage.removeItem(`finflow:onboarding:v1:${userId}`);
                 } catch {
                   /* Optional progress storage. */
                 }
-                router.replace("/");
+                router.replace("/painel");
               }}
             />
-            {step === 6 &&
+            {step === 4 &&
               (!onboarding.plan.data || !onboarding.status.data?.completed) && (
                 <div className="onboarding-defer-plan">
                   <p>Prefere organizar o orçamento em outro momento?</p>
@@ -302,7 +285,7 @@ function Journey({
                     disabled={editing || !hasAccount || !onboarding.hasProfile}
                     onClick={() => {
                       deferPlan(userId);
-                      router.replace("/");
+                      router.replace("/painel");
                     }}
                   >
                     Fazer o plano depois
@@ -310,7 +293,7 @@ function Journey({
                 </div>
               )}
           </div>
-          {step > 0 && step < 6 && (
+          {step > 0 && step < 4 && (
             <footer className="onboarding-footer">
               <div>
                 {step === 1 ? (

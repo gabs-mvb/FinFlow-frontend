@@ -87,7 +87,7 @@ export function PlanEditor({
     }
   }
   return (
-    <form className="panel stack" onSubmit={save}>
+    <form className="panel stack plan-editor" onSubmit={save}>
       <h2>Editar proposta · versão {base.revision}</h2>
       <p className="muted">
         Ajuste também as ações e alocações correspondentes aos valores. Ao
