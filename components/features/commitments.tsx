@@ -14,6 +14,7 @@ import { debtTypes, obligationTypes, labelFor, statuses } from "@/lib/labels";
 import {
   Alert,
   Button,
+  CurrencyAmountInput,
   CurrencyField,
   EmptyState,
   Field,
@@ -47,6 +48,8 @@ export function CommitmentsPage({
   const [paying, setPaying] = useState<Commitment | null>(null);
   const [filter, setFilter] = useState("open");
   const [notice, setNotice] = useState("");
+  const [newCurrency, setNewCurrency] = useState(initialCurrency);
+  const [recurring, setRecurring] = useState(false);
   const debts = kind === "debts";
   const items = resource.data ?? [];
   const open = items.filter(
@@ -169,7 +172,7 @@ export function CommitmentsPage({
                     <small>
                       {isDebt(item)
                         ? `Saldo devedor: ${currency(item.outstandingAmount)}`
-                        : `Vencimento: ${calendarDate(item.dueDate)}${item.status === "PAID" ? " • Pago" : ""}`}
+                        : `${item.recurring ? `Todo mês, dia ${item.dueDay} • Próximo: ` : "Vencimento: "}${calendarDate(item.dueDate)}${item.status === "PAID" ? " • Pago" : ""}`}
                     </small>
                   </div>
                   <div>
@@ -187,24 +190,24 @@ export function CommitmentsPage({
             </ul>
           ) : filtered.length ? (
             <div className="table-wrap">
-              <table className="data-table">
+              <table className="data-table" role="table">
                 <thead>
-                  <tr>
-                    <th>{debts ? "Dívida" : "Compromisso"}</th>
-                    <th>{debts ? "Custo anual / parcela" : "Vencimento"}</th>
-                    <th>Status</th>
-                    <th className="numeric">
+                  <tr role="row">
+                    <th role="columnheader">{debts ? "Dívida" : "Compromisso"}</th>
+                    <th role="columnheader">{debts ? "Custo anual / parcela" : "Vencimento"}</th>
+                    <th role="columnheader">Status</th>
+                    <th role="columnheader" className="numeric">
                       {debts ? "Saldo devedor" : "Valor"}
                     </th>
-                    <th>
+                    <th role="columnheader">
                       <span className="sr-only">Ações</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((item) => (
-                    <tr key={item.id}>
-                      <td>
+                    <tr role="row" key={item.id}>
+                      <td role="cell" data-label="Registro">
                         <strong>{item.name}</strong>
                         <small>
                           {labelFor(
@@ -217,8 +220,11 @@ export function CommitmentsPage({
                             Juros altos
                           </span>
                         )}
+                        {!isDebt(item) && item.recurring && (
+                          <span className="badge">Recorrente</span>
+                        )}
                       </td>
-                      <td>
+                      <td role="cell" data-label="Vencimento / parcela">
                         {isDebt(item) ? (
                           <>
                             {new Intl.NumberFormat("pt-BR", {
@@ -238,6 +244,7 @@ export function CommitmentsPage({
                             }
                           >
                             {calendarDate(item.dueDate)}
+                            {item.recurring && <small>Todo mês, dia {item.dueDay}</small>}
                             {item.status === "PENDING" &&
                               item.dueDate < localDate() && (
                                 <small>Vencido</small>
@@ -245,21 +252,21 @@ export function CommitmentsPage({
                           </span>
                         )}
                       </td>
-                      <td>
+                      <td role="cell" data-label="Status">
                         <span
                           className={`badge ${item.status === "PAID" ? "badge-success" : ""}`}
                         >
                           {statuses[item.status]}
                         </span>
                       </td>
-                      <td className="numeric">
+                      <td role="cell" data-label="Valor" className="numeric">
                         <strong>
                           {currency(
                             isDebt(item) ? item.outstandingAmount : item.amount,
                           )}
                         </strong>
                       </td>
-                      <td>
+                      <td role="cell" data-label="Ações">
                         {(item.status === "ACTIVE" ||
                           item.status === "PENDING") && (
                           <Button
@@ -322,7 +329,10 @@ export function CommitmentsPage({
                   : {
                       ...common,
                       amount: moneyInput(data),
-                      dueDate: textInput(data, "dueDate"),
+                      recurring,
+                      ...(recurring
+                        ? { dueDay: Number(data.get("dueDay")) }
+                        : { dueDate: textInput(data, "dueDate") }),
                     },
               );
               saved(debts ? "Dívida adicionada." : "Compromisso adicionado.");
@@ -350,25 +360,23 @@ export function CommitmentsPage({
                   )}
                 </select>
               </Field>
-              <CurrencyField value={initialCurrency} />
+              <CurrencyField value={newCurrency} onChange={setNewCurrency} />
               <Field label={debts ? "Saldo devedor" : "Valor"}>
-                <input
+                <CurrencyAmountInput
                   required
-                  type="number"
                   name="amount"
+                  currency={newCurrency}
                   min="0.01"
-                  step="0.01"
                 />
               </Field>
               {debts ? (
                 <>
                   <Field label="Parcela mensal">
-                    <input
+                    <CurrencyAmountInput
                       required
-                      type="number"
                       name="monthlyPayment"
+                      currency={newCurrency}
                       min="0"
-                      step="0.01"
                     />
                   </Field>
                   <Field label="Taxa efetiva anual (%)">
@@ -388,14 +396,40 @@ export function CommitmentsPage({
                   </Field>
                 </>
               ) : (
-                <Field label="Vencimento">
-                  <input
-                    required
-                    type="date"
-                    name="dueDate"
-                    defaultValue={initialDueDate ?? localDate()}
-                  />
-                </Field>
+                <>
+                  <Field label="Frequência">
+                    <select
+                      value={recurring ? "monthly" : "once"}
+                      onChange={(event) =>
+                        setRecurring(event.target.value === "monthly")
+                      }
+                    >
+                      <option value="once">Vencimento único</option>
+                      <option value="monthly">Repete todo mês</option>
+                    </select>
+                  </Field>
+                  {recurring ? (
+                    <Field
+                      label="Dia do vencimento"
+                      hint="Nos meses mais curtos, vence no último dia."
+                    >
+                      <input
+                        required
+                        type="number"
+                        name="dueDay"
+                        min="1"
+                        max="31"
+                        defaultValue={Number(
+                          (initialDueDate ?? localDate()).slice(8),
+                        )}
+                      />
+                    </Field>
+                  ) : (
+                    <Field label="Vencimento">
+                      <input required type="date" name="dueDate" defaultValue={initialDueDate ?? localDate()} />
+                    </Field>
+                  )}
+                </>
               )}
             </div>
           </SubmitForm>
@@ -426,7 +460,7 @@ export function CommitmentsPage({
             </p>
             <Alert>
               Este registro{" "}
-              {debts ? "zera o saldo devedor" : "marca o compromisso como pago"}
+              {debts ? "zera o saldo devedor" : isDebt(paying) || !paying.recurring ? "marca o compromisso como pago" : "avança o próximo vencimento para o mês seguinte"}
               . Nenhum dinheiro será movimentado e o saldo das contas precisa
               ser atualizado separadamente.
             </Alert>

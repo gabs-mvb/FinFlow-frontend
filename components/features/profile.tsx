@@ -150,7 +150,7 @@ function ProfileForm({
               aria-label="Dia do recebimento"
               type="number"
               min="1"
-              max="28"
+              max="31"
               step="1"
               required
               defaultValue={profile?.payDay ?? 1}

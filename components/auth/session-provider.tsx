@@ -122,7 +122,7 @@ export function useSession() {
 
 const destinations = new Set([
   "/onboarding",
-  "/",
+  "/painel",
   "/contas",
   "/transacoes",
   "/compromissos",
@@ -135,5 +135,5 @@ const destinations = new Set([
   "/perfil",
 ]);
 export function safeReturnPath(value: string | null) {
-  return value && destinations.has(value) ? value : "/";
+  return value && destinations.has(value) ? value : "/painel";
 }

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { OverviewPage } from "@/components/features/overview";
 import { TransactionsPage } from "@/components/features/transactions";
 import { CommitmentsPage } from "@/components/features/commitments";
 import { GoalsPage } from "@/components/features/goals";
@@ -9,6 +10,7 @@ import { ReportsPage } from "@/components/features/reports";
 import { ConnectionsPage } from "@/components/features/connections";
 
 const pages: Record<string, React.ComponentType> = {
+  painel: OverviewPage,
   transacoes: TransactionsPage,
   compromissos: () => <CommitmentsPage kind="obligations" />,
   dividas: () => <CommitmentsPage kind="debts" />,

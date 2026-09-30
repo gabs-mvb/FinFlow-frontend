@@ -15,14 +15,22 @@ export function resumeStep(
   if (!hasProfile) return 0;
   if (!hasAccount) return 1;
   const step = Number(saved);
-  return saved !== null && Number.isInteger(step) && step >= 0 && step <= 6
+  return saved !== null && Number.isInteger(step) && step >= 0 && step <= 4
     ? step
     : 2;
 }
 
+/** Maps progress saved by the seven-step onboarding to the current five steps. */
+export function migrateOnboardingV2Step(saved: string | null): string | null {
+  if (saved === null || !/^[0-6]$/.test(saved)) return null;
+  return String([0, 1, 1, 1, 2, 3, 4][Number(saved)]);
+}
+
 export function migrateOnboardingStep(saved: string | null): string | null {
   if (saved === null || !/^[0-6]$/.test(saved)) return null;
-  return String([1, 2, 3, 4, 5, 0, 6][Number(saved)]);
+  return migrateOnboardingV2Step(
+    String([1, 2, 3, 4, 5, 0, 6][Number(saved)]),
+  );
 }
 
 /** The backend completion flag records a saved financial profile, before any account is required. */

@@ -5,6 +5,8 @@ import {
   useId,
   useRef,
   useState,
+  type ChangeEvent,
+  type InputHTMLAttributes,
   type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
@@ -304,10 +306,21 @@ export function SubmitForm({
   );
 }
 
-export function CurrencyField({ value = "BRL" }: { value?: string }) {
+export function CurrencyField({
+  value = "BRL",
+  onChange,
+}: {
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <Field label="Moeda">
-      <select name="currency" defaultValue={value}>
+      <select
+        name="currency"
+        {...(onChange
+          ? { value, onChange: (event: ChangeEvent<HTMLSelectElement>) => onChange(event.target.value) }
+          : { defaultValue: value })}
+      >
         <option value="BRL">BRL — Real</option>
         <option value="USD">USD — Dólar</option>
         <option value="EUR">EUR — Euro</option>
@@ -316,9 +329,82 @@ export function CurrencyField({ value = "BRL" }: { value?: string }) {
   );
 }
 
+/** Converts the Brazilian decimal notation used in forms into a number. */
+export function parseCurrencyAmount(value: unknown): number {
+  const input = String(value ?? "").trim();
+  if (!input) return Number.NaN;
+  const clean = input.replace(/[^\d,.-]/g, "");
+  const comma = clean.lastIndexOf(",");
+  const dot = clean.lastIndexOf(".");
+  const separator = Math.max(comma, dot);
+  const integer =
+    separator < 0
+      ? clean
+      : clean.slice(0, separator).replace(/[.,]/g, "");
+  const fraction = separator < 0 ? "" : clean.slice(separator + 1).replace(/[.,]/g, "");
+  return Number(`${integer}${fraction ? `.${fraction}` : ""}`);
+}
+
+type CurrencyAmountInputProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "type" | "value" | "defaultValue" | "onChange"
+> & {
+  currency: string;
+  value?: string;
+  defaultValue?: string | number;
+  onValueChange?: (value: string) => void;
+};
+
+/**
+ * A money field with a live currency mask. Each digit is treated as cents,
+ * like bank and card-payment inputs (e.g. 123456 becomes R$ 1.234,56).
+ */
+export function CurrencyAmountInput({
+  currency,
+  value,
+  defaultValue = "",
+  onValueChange,
+  onFocus,
+  onBlur,
+  inputMode = "decimal",
+  ...props
+}: CurrencyAmountInputProps) {
+  const [uncontrolledValue, setUncontrolledValue] = useState(String(defaultValue));
+  const raw = value ?? uncontrolledValue;
+  const parsed = parseCurrencyAmount(raw);
+  const displayed =
+    !raw || !Number.isFinite(parsed)
+      ? raw
+      : new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency,
+        }).format(parsed);
+
+  function change(event: ChangeEvent<HTMLInputElement>) {
+    const digits = event.target.value.replace(/\D/g, "");
+    const next = digits
+      ? String(Number((Number(digits) / 100).toFixed(2)))
+      : "";
+    if (value === undefined) setUncontrolledValue(next);
+    onValueChange?.(next);
+  }
+
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode={inputMode}
+      value={displayed}
+      onChange={change}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    />
+  );
+}
+
 export function moneyInput(data: FormData, field = "amount") {
   return {
-    amount: Number(data.get(field)),
+    amount: parseCurrencyAmount(data.get(field)),
     currency: String(data.get("currency") || "BRL"),
   };
 }

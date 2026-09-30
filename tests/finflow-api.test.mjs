@@ -260,6 +260,20 @@ test("budget excludes inactive debts, cancelled commitments, other months and cu
   assert.equal(monthlyBudget([], [], "BRL", "2026-09", 0).total, 0);
 });
 
+test("monthly recurring commitment appears in later months after its next unpaid due date", () => {
+  const rent = {
+    status: "PENDING",
+    recurring: true,
+    dueDay: 31,
+    dueDate: "2027-01-31",
+    amount: { amount: 1200, currency: "BRL" },
+  };
+  assert.equal(monthlyBudget([], [rent], "BRL", "2027-01", 0).commitments, 1200);
+  assert.equal(monthlyBudget([], [rent], "BRL", "2027-02", 0).commitments, 1200);
+  assert.equal(monthlyBudget([], [rent], "BRL", "2026-12", 0).commitments, 0);
+  assert.equal(monthlyBudget([], [{ ...rent, status: "CANCELLED" }], "BRL", "2027-02", 0).commitments, 0);
+});
+
 test("onboarding proxy allows only status GET and completion POST and forwards the profile", async () => {
   process.env.FINFLOW_API_URL = "http://backend.internal:8080";
   const calls = [];
@@ -323,21 +337,21 @@ test("onboarding proxy allows only status GET and completion POST and forwards t
 });
 
 test("profile comes first and persisted progress cannot skip either mandatory step", () => {
-  assert.equal(onboarding.resumeStep("6", true, false), 0);
-  assert.equal(onboarding.resumeStep("6", false, false), 0);
-  assert.equal(onboarding.resumeStep("6", false, true), 1);
+  assert.equal(onboarding.resumeStep("4", true, false), 0);
+  assert.equal(onboarding.resumeStep("4", false, false), 0);
+  assert.equal(onboarding.resumeStep("4", false, true), 1);
   assert.equal(onboarding.resumeStep(null, true, true), 2);
   assert.equal(onboarding.resumeStep("3", true, true), 3);
   assert.equal(onboarding.resumeStep("900", true, true), 2);
   assert.equal(onboarding.resumeStep("NaN", true, true), 2);
   assert.equal(onboarding.resumeStep("0", true, true), 0);
-  assert.equal(onboarding.resumeStep("6", true, true), 6);
+  assert.equal(onboarding.resumeStep("4", true, true), 4);
 });
 
 test("old progress maps to the reordered steps without losing saved records", () => {
   assert.deepEqual(
     ["0", "1", "2", "3", "4", "5", "6"].map(onboarding.migrateOnboardingStep),
-    ["1", "2", "3", "4", "5", "0", "6"],
+    ["1", "1", "1", "2", "3", "0", "4"],
   );
   assert.equal(onboarding.migrateOnboardingStep(null), null);
   assert.equal(onboarding.migrateOnboardingStep("900"), null);

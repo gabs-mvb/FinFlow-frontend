@@ -21,7 +21,9 @@ export function monthlyBudget(
       (item) =>
         item.status !== "CANCELLED" &&
         item.amount.currency === currency &&
-        item.dueDate.slice(0, 7) === month,
+        (item.recurring
+          ? item.status === "PENDING" && item.dueDate.slice(0, 7) <= month
+          : item.dueDate.slice(0, 7) === month),
     )
     .reduce((sum, item) => sum + cents(item.amount.amount), 0);
   const variable = cents(variableBudget);

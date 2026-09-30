@@ -154,7 +154,7 @@ export function PlanPage() {
           <div className="stack">
             <section className="panel stack">
               <PlanDetailsView plan={plan} />
-              <div className="row">
+              <div className="row plan-review-actions">
                 {plan.content && plan.revision !== undefined && (
                   <Button
                     variant="secondary"
